@@ -11,11 +11,10 @@ import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.type.*;
 import com.github.javaparser.ast.visitor.DumpVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitor;
+import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 import static com.github.javaparser.PositionUtils.sortByBeginPosition;
 import static com.github.javaparser.ast.internal.Utils.isNullOrEmpty;
@@ -47,7 +46,7 @@ import static com.github.javaparser.ast.internal.Utils.isNullOrEmpty;
  *
  * @author Julio Vilmar Gesser
  */
-public class RustDumpVisitor implements VoidVisitor<Object> {
+public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
 
         private boolean printComments;
 
@@ -125,6 +124,10 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
                 marks.remove(marks.size()-1);
             }
 
+            public void drop() {
+                marks.remove(marks.size()-1);
+            }
+
             @Override public String toString() {
                 return getSource();
             }
@@ -139,6 +142,52 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         public String getSource() {
             return printer.getSource();
         }
+
+    static String[] mappedNames = {
+            "NaN", "NAN",
+            "NEGATIVE_INFINITY", "NEG_INFINITY",
+            "POSITIVE_INFINITY", "INFINITY",
+            "MIN_VALUE","MIN",
+            "MAX_VALUE","MAX",
+    };
+
+    static HashMap<String, String> namesMap = new HashMap<>();
+    static {
+        for (int i = 0; i < mappedNames.length; i += 2) {
+            namesMap.put(mappedNames[i], mappedNames[i+1]);
+        }
+    }
+
+
+    private String toSnakeIfNecessary(String n) {
+        System.out.println("doing: " + n);
+        if (namesMap.containsKey(n))
+            n = namesMap.get(n);
+        String name = n;
+        if (Character.isLowerCase(name.charAt(0))) {
+            StringBuilder sb = new StringBuilder();
+            for (Character c: name.toCharArray()) {
+                if (Character.isUpperCase(c)) {
+                    sb.append("_").append(Character.toLowerCase(c));
+                } else {
+                    sb.append(c);
+                }
+            }
+            return sb.toString();
+        }
+        return n;
+    }
+
+    private String removePlusAndSuffix(String value,  CharSequence... searchStrings) {
+        if (value.startsWith("+")) {
+            value = value.substring(1);
+        }
+        if (StringUtils.endsWithAny(value, searchStrings)) {
+            value = value.substring(0, value.length()-1);
+        }
+        return value;
+    }
+
 
     protected void printModifiers(final int modifiers) {
             if (ModifierSet.isPrivate(modifiers)) {
@@ -181,24 +230,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
                 printer.printLn();
                 member.accept(this, arg);
                 printer.printLn();
-            }
-        }
-
-    protected void printMemberAnnotations(final List<AnnotationExpr> annotations, final Object arg) {
-            if (!isNullOrEmpty(annotations)) {
-                for (final AnnotationExpr a : annotations) {
-                    a.accept(this, arg);
-                    printer.printLn();
-                }
-            }
-        }
-
-    protected void printAnnotations(final List<AnnotationExpr> annotations, final Object arg) {
-            if (!isNullOrEmpty(annotations)) {
-                for (final AnnotationExpr a : annotations) {
-                    a.accept(this, arg);
-                    printer.print(" ");
-                }
             }
         }
 
@@ -285,7 +316,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final PackageDeclaration n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printAnnotations(n.getAnnotations(), arg);
             printer.print("package ");
             n.getName().accept(this, arg);
             printer.printLn(";");
@@ -296,7 +326,7 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final NameExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printer.print(n.getName());
+            printer.print(toSnakeIfNecessary(n.getName()));
 
             printOrphanCommentsEnding(n);
         }
@@ -304,7 +334,7 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         @Override public void visit(final QualifiedNameExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             n.getQualifier().accept(this, arg);
-            printer.print(".");
+            printer.print("::");
             printer.print(n.getName());
 
             printOrphanCommentsEnding(n);
@@ -328,7 +358,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         @Override public void visit(final ClassOrInterfaceDeclaration n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             printJavadoc(n.getJavaDoc(), arg);
-            printMemberAnnotations(n.getAnnotations(), arg);
             printModifiers(n.getModifiers());
 
             if (n.isInterface()) {
@@ -392,13 +421,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         @Override public void visit(final ClassOrInterfaceType n, final Object arg) {
             printJavaComment(n.getComment(), arg);
 
-            if (n.getAnnotations() != null) {
-                for (AnnotationExpr ae : n.getAnnotations()) {
-                    ae.accept(this, arg);
-                    printer.print(" ");
-                }
-            }
-
             if (n.getScope() != null) {
                 n.getScope().accept(this, arg);
                 printer.print(".");
@@ -414,12 +436,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final TypeParameter n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            if (n.getAnnotations() != null) {
-                for (AnnotationExpr ann : n.getAnnotations()) {
-                    ann.accept(this, arg);
-                    printer.print(" ");
-                }
-            }
             printer.print(n.getName());
             if (!isNullOrEmpty(n.getTypeBound())) {
                 printer.print(" extends ");
@@ -435,61 +451,39 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final PrimitiveType n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            if (!isNullOrEmpty(n.getAnnotations())) {
-                for (AnnotationExpr ae : n.getAnnotations()) {
-                    ae.accept(this, arg);
-                    printer.print(" ");
-                }
-            }
+
             switch (n.getType()) {
                 case Boolean:
-                    printer.print("boolean");
+                    printer.print("bool");
                     break;
                 case Byte:
-                    printer.print("byte");
+                    printer.print("i8");
                     break;
                 case Char:
                     printer.print("char");
                     break;
                 case Double:
-                    printer.print("double");
+                    printer.print("f64");
                     break;
                 case Float:
-                    printer.print("float");
+                    printer.print("f32");
                     break;
                 case Int:
-                    printer.print("int");
+                    printer.print("i32");
                     break;
                 case Long:
-                    printer.print("long");
+                    printer.print("i64");
                     break;
                 case Short:
-                    printer.print("short");
+                    printer.print("i16");
                     break;
             }
         }
 
         @Override public void visit(final ReferenceType n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            if (!isNullOrEmpty(n.getAnnotations())) {
-                for (AnnotationExpr ae : n.getAnnotations()) {
-                    ae.accept(this, arg);
-                    printer.print(" ");
-                }
-            }
             n.getType().accept(this, arg);
-            List<List<AnnotationExpr>> arraysAnnotations = n.getArraysAnnotations();
             for (int i = 0; i < n.getArrayCount(); i++) {
-                if (arraysAnnotations != null && i < arraysAnnotations.size()) {
-                    List<AnnotationExpr> annotations = arraysAnnotations.get(i);
-                    if (!isNullOrEmpty(annotations)) {
-                        for (AnnotationExpr ae : annotations) {
-                            printer.print(" ");
-                            ae.accept(this, arg);
-
-                        }
-                    }
-                }
                 printer.print("[]");
             }
         }
@@ -523,12 +517,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final WildcardType n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            if (n.getAnnotations() != null) {
-                for (AnnotationExpr ae : n.getAnnotations()) {
-                    printer.print(" ");
-                    ae.accept(this, arg);
-                }
-            }
             printer.print("?");
             if (n.getExtends() != null) {
                 printer.print(" extends ");
@@ -549,7 +537,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
             printJavaComment(n.getComment(), arg);
             printJavadoc(n.getJavaDoc(), arg);
-            printMemberAnnotations(n.getAnnotations(), arg);
             printModifiers(n.getModifiers());
             n.getType().accept(this, arg);
 
@@ -580,7 +567,7 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final VariableDeclaratorId n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printer.print(n.getName());
+            printer.print(toSnakeIfNecessary(n.getName()));
         }
 
         @Override public void visit(final ArrayInitializerExpr n, final Object arg) {
@@ -616,52 +603,22 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         @Override public void visit(final ArrayCreationExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             // printer.print("new ");
-            n.getType().accept(this, arg);
-            List<List<AnnotationExpr>> arraysAnnotations = n.getArraysAnnotations();
+            // n.getType().accept(this, arg);
             if (!isNullOrEmpty(n.getDimensions())) {
+                n.getType().accept(this, arg);
                 int j = 0;
                 for (final Expression dim : n.getDimensions()) {
 
-                    if (arraysAnnotations != null && j < arraysAnnotations.size()) {
-                        List<AnnotationExpr> annotations = arraysAnnotations.get(j);
-                        if (!isNullOrEmpty(annotations)) {
-                            for (AnnotationExpr ae : annotations) {
-                                printer.print(" ");
-                                ae.accept(this, arg);
-                            }
-                        }
-                    }
                     printer.print("[");
                     dim.accept(this, arg);
                     printer.print("]");
                     j++;
                 }
                 for (int i = 0; i < n.getArrayCount(); i++) {
-                    if (arraysAnnotations != null && i < arraysAnnotations.size()) {
-
-                        List<AnnotationExpr> annotations = arraysAnnotations.get(i);
-                        if (!isNullOrEmpty(annotations)) {
-                            for (AnnotationExpr ae : annotations) {
-                                printer.print(" ");
-                                ae.accept(this, arg);
-
-                            }
-                        }
-                    }
                     printer.print("[]");
                 }
-
             } else {
                 for (int i = 0; i < n.getArrayCount(); i++) {
-                    if (arraysAnnotations != null && i < arraysAnnotations.size()) {
-                        List<AnnotationExpr> annotations = arraysAnnotations.get(i);
-                        if (!isNullOrEmpty(annotations)) {
-                            for (AnnotationExpr ae : annotations) {
-                                ae.accept(this, arg);
-                                printer.print(" ");
-                            }
-                        }
-                    }
                     printer.print("[]");
                 }
                 printer.print(" ");
@@ -671,7 +628,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final AssignExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printer.print("let ");
             n.getTarget().accept(this, arg);
             printer.print(" ");
             switch (n.getOperator()) {
@@ -817,8 +773,17 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final FieldAccessExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
+            int mark = printer.push();
             n.getScope().accept(this, arg);
-            printer.print(".");
+            String scope = printer.getMark(mark);
+            printer.drop();
+            int i = StringUtils.lastIndexOfAny(scope,"\n","\t"," ",".");
+            String accessed = i <= 0 ? scope : scope.substring(i+1);
+            if (Character.isUpperCase(accessed.charAt(0))) {
+                printer.print("::");
+            } else {
+                printer.print(".");
+            }
             printer.print(n.getField());
         }
 
@@ -838,17 +803,20 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final DoubleLiteralExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printer.print(n.getValue());
+            String value = n.getValue();
+            if (!StringUtils.containsAny(value, '.','e','E','x','X'))
+                value = value + ".0";
+            printer.print(removePlusAndSuffix(value,"l","L"));
         }
 
         @Override public void visit(final IntegerLiteralExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printer.print(n.getValue());
+            printer.print(removePlusAndSuffix(n.getValue()));
         }
 
         @Override public void visit(final LongLiteralExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printer.print(n.getValue());
+            printer.print(removePlusAndSuffix(n.getValue(),"l","L"));
         }
 
         @Override public void visit(final IntegerLiteralMinValueExpr n, final Object arg) {
@@ -903,7 +871,7 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
                 printer.print(".");
             }
             printTypeArgs(n.getTypeArgs(), arg);
-            printer.print(n.getName());
+            printer.print(toSnakeIfNecessary(n.getName()));
             printArguments(n.getArgs(), arg);
         }
 
@@ -974,7 +942,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         @Override public void visit(final ConstructorDeclaration n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             printJavadoc(n.getJavaDoc(), arg);
-            printMemberAnnotations(n.getAnnotations(), arg);
             printModifiers(n.getModifiers());
 
             printTypeParameters(n.getTypeParameters(), arg);
@@ -1015,7 +982,11 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
             printJavaComment(n.getComment(), arg);
             printJavadoc(n.getJavaDoc(), arg);
 
-            // printMemberAnnotations(n.getAnnotations(), arg);
+            for (AnnotationExpr a: n.getAnnotations()) {
+                if (a.getName().getName().equals("Test")) {
+                    printer.printLn("#[test]");
+                }
+            }
             printModifiers(n.getModifiers());
             printer.print("fn ");
             if (n.isDefault()) {
@@ -1031,7 +1002,7 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
             String typeString = printer.getMark(mark);
             printer.pop();
             printer.print(" ");
-            printer.print(n.getName());
+            printer.print(toSnakeIfNecessary(n.getName()));
 
             printer.print("(");
             if (!ModifierSet.isStatic(n.getModifiers())) {
@@ -1087,7 +1058,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final Parameter n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printAnnotations(n.getAnnotations(), arg);
             printModifiers(n.getModifiers());
             if (n.getType() != null) {
                 n.getType().accept(this, arg);
@@ -1100,7 +1070,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         }
 
         @Override public void visit(MultiTypeParameter n, Object arg) {
-            printAnnotations(n.getAnnotations(), arg);
             printModifiers(n.getModifiers());
 
             Type type = n.getType();
@@ -1131,7 +1100,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         @Override public void visit(final VariableDeclarationExpr n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printAnnotations(n.getAnnotations(), arg);
             printModifiers(n.getModifiers());
 
             printer.print(" ");
@@ -1256,7 +1224,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         @Override public void visit(final EnumDeclaration n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             printJavadoc(n.getJavaDoc(), arg);
-            printMemberAnnotations(n.getAnnotations(), arg);
             printModifiers(n.getModifiers());
 
             printer.print("enum ");
@@ -1300,7 +1267,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
         @Override public void visit(final EnumConstantDeclaration n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             printJavadoc(n.getJavaDoc(), arg);
-            printMemberAnnotations(n.getAnnotations(), arg);
             printer.print(n.getName());
 
             if (n.getArgs() != null) {
@@ -1490,72 +1456,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
 
         }
 
-        @Override public void visit(final AnnotationDeclaration n, final Object arg) {
-            printJavaComment(n.getComment(), arg);
-            printJavadoc(n.getJavaDoc(), arg);
-            printMemberAnnotations(n.getAnnotations(), arg);
-            printModifiers(n.getModifiers());
-
-            printer.print("@interface ");
-            printer.print(n.getName());
-            printer.printLn(" {");
-            printer.indent();
-            if (n.getMembers() != null) {
-                printMembers(n.getMembers(), arg);
-            }
-            printer.unindent();
-            printer.print("}");
-        }
-
-        @Override public void visit(final AnnotationMemberDeclaration n, final Object arg) {
-            printJavaComment(n.getComment(), arg);
-            printJavadoc(n.getJavaDoc(), arg);
-            printMemberAnnotations(n.getAnnotations(), arg);
-            printModifiers(n.getModifiers());
-
-            n.getType().accept(this, arg);
-            printer.print(" ");
-            printer.print(n.getName());
-            printer.print("()");
-            if (n.getDefaultValue() != null) {
-                printer.print(" default ");
-                n.getDefaultValue().accept(this, arg);
-            }
-            printer.print(";");
-        }
-
-        @Override public void visit(final MarkerAnnotationExpr n, final Object arg) {
-            printJavaComment(n.getComment(), arg);
-            printer.print("@");
-            n.getName().accept(this, arg);
-        }
-
-        @Override public void visit(final SingleMemberAnnotationExpr n, final Object arg) {
-            printJavaComment(n.getComment(), arg);
-            printer.print("@");
-            n.getName().accept(this, arg);
-            printer.print("(");
-            n.getMemberValue().accept(this, arg);
-            printer.print(")");
-        }
-
-        @Override public void visit(final NormalAnnotationExpr n, final Object arg) {
-            printJavaComment(n.getComment(), arg);
-            printer.print("@");
-            n.getName().accept(this, arg);
-            printer.print("(");
-            if (n.getPairs() != null) {
-                for (final Iterator<MemberValuePair> i = n.getPairs().iterator(); i.hasNext();) {
-                    final MemberValuePair m = i.next();
-                    m.accept(this, arg);
-                    if (i.hasNext()) {
-                        printer.print(", ");
-                    }
-                }
-            }
-            printer.print(")");
-        }
-
         @Override public void visit(final MemberValuePair n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             printer.print(n.getName());
@@ -1700,4 +1600,6 @@ public class RustDumpVisitor implements VoidVisitor<Object> {
                 everything.get(everything.size()-commentsAtEnd+i).accept(this, null);
             }
         }
+
+
     }

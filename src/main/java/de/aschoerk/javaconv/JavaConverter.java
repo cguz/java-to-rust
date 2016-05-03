@@ -1,23 +1,21 @@
 package de.aschoerk.javaconv;
 
-import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.ModifierSet;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.VariableDeclarator;
-import com.github.javaparser.ast.expr.ArrayInitializerExpr;
-import com.github.javaparser.ast.expr.Expression;
-import com.github.javaparser.ast.expr.UnaryExpr;
+import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.type.Type;
 
-import java.io.ByteArrayInputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.github.javaparser.ast.internal.Utils.isNullOrEmpty;
 import static java.util.Collections.reverse;
@@ -25,20 +23,10 @@ import static java.util.Collections.reverse;
 
 public class JavaConverter {
 
-    private String encapsulateInMethod(String testString) {
-        String res = "class A { void m() { " + testString + "; } }";
-        System.out.println("in Method: " + res);
-        return res;
-    }
-
-    private String encapsulateInClass(String testString) {
-        String res = "class A { " + testString + ";  }";
-        System.out.println("in Class: " + res);
-        return res;
-    }
-
     static class MyDumpVisitor extends RustDumpVisitor {
         boolean commentOut = false;
+
+
 
         public MyDumpVisitor(boolean printComments) {
             super(printComments);
@@ -109,7 +97,6 @@ public class JavaConverter {
             printJavadoc(n.getJavaDoc(), arg);
             if (commentOut) {
                 printer.printLn("/* ");
-                printMemberAnnotations(n.getAnnotations(), arg);
                 printModifiers(n.getModifiers());
                 n.getType().accept(this, arg);
                 printer.printLn(" */");
@@ -132,7 +119,8 @@ public class JavaConverter {
             printJavaComment(n.getComment(), arg);
             printer.print("let ");
             n.getId().accept(this, arg);
-            boolean isInitializedArray = n.getInit() != null && n.getInit() instanceof ArrayInitializerExpr;
+            boolean isInitializedArray = n.getInit() != null && (n.getInit() instanceof ArrayInitializerExpr
+                    || n.getInit() instanceof ArrayCreationExpr);
             if (arg instanceof Type && !isInitializedArray) {
                 printer.print(": ");
                 Type t = (Type)arg;
@@ -149,7 +137,6 @@ public class JavaConverter {
             printJavaComment(n.getComment(), arg);
             if (commentOut) {
                 printer.print("/* ");
-                printAnnotations(n.getAnnotations(), arg);
                 printModifiers(n.getModifiers());
                 if (n.isVarArgs()) {
                     printer.print("...");
@@ -194,6 +181,14 @@ public class JavaConverter {
             return dimensions;
         }
 
+        String acceptAndCut(Node n, final Object arg) {
+            int mark = printer.push();
+            n.accept(this, arg);
+            String result = printer.getMark(mark);
+            printer.pop();
+            return result;
+        }
+
         @Override public void visit(final ArrayInitializerExpr n, final Object arg) {
             Type t = arg instanceof Type ? (Type)arg : null;
             printJavaComment(n.getComment(), arg);
@@ -202,10 +197,7 @@ public class JavaConverter {
                 if (t != null) {
                     List<Integer> dims = getDimensions(n, t);
                     StringBuilder sb = new StringBuilder();
-                    int mark = printer.push();
-                    t.accept(this, arg);
-                    sb.append(printer.getMark(mark));
-                    printer.pop();
+                    sb.append(acceptAndCut(t, arg));
                     reverse(dims);
                     for (Integer i: dims) {
                         sb.insert(0, "[");
@@ -226,7 +218,66 @@ public class JavaConverter {
             }
         }
 
+        String defaultValue(String type) {
+
+            switch (type) {
+                case "f64":
+                case "f32": return "0.0";
+                case "u64":
+                case "u32":
+                case "u16":
+                case "u8":
+                case "usize":
+                case "i64":
+                case "i32":
+                case "i16":
+                case "i8": return "0";
+                case "bool": return "false";
+                default:
+                    return "None";
+            }
+        }
+
+        @Override public void visit(final ArrayCreationExpr n, final Object arg) {
+            printJavaComment(n.getComment(), arg);
+            if (!isNullOrEmpty(n.getDimensions())) {
+                String type = acceptAndCut(n.getType(), arg);
+                String typeOrDefaultValue = defaultValue(type);
+                if (typeOrDefaultValue.equals("None"))
+                    type = "Option<" + type + ">";
+                List<String> dims = n
+                        .getDimensions()
+                        .stream()
+                        .map(e -> acceptAndCut(e, arg))
+                        .collect(Collectors.toList());
+
+                printer.print(": ");
+                printer.print(getArrayDeclaration(type, dims));
+
+                printer.print(" = ");
+                printer.print(getArrayDeclaration(typeOrDefaultValue, dims));
+
+            } else {
+                printer.print(" ");
+                n.getInitializer().accept(this, n.getType());
+            }
+        }
+
+        private String getArrayDeclaration(String typeOrDefaultValue, List<String> dims) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(typeOrDefaultValue);
+            reverse(dims);
+            for (String s: dims) {
+                sb.insert(0, "[");
+                sb.append("; ").append(s).append("]");
+            }
+            reverse(dims);
+            return sb.toString();
+        }
+
     }
+
+
 
     public static String convert2Rust(String javaString) {
         return new JavaConverter().convert(javaString);
@@ -234,10 +285,8 @@ public class JavaConverter {
 
 
     public String convert(String javaString) {
-        try (StringReader sr = new StringReader(javaString)) {
-            CompilationUnit res = createCompilationUnit(javaString);
-            NameVisitor nameExprVisitor = new NameVisitor();
-            nameExprVisitor.visit(res, null);
+        try {
+            CompilationUnit res = PartParser.createCompilationUnit(javaString);
             RustDumpVisitor dumper = new MyDumpVisitor(true);
             dumper.visit(res, null);
             return dumper.getSource();
@@ -246,19 +295,4 @@ public class JavaConverter {
         }
     }
 
-    private CompilationUnit createCompilationUnit(String javaString) throws ParseException {
-        try {
-            return tryParse(javaString);
-        } catch (ParseException|StackOverflowError ex) {
-            try {
-                return tryParse(encapsulateInClass(javaString));
-            } catch (ParseException|StackOverflowError e) {
-                return tryParse(encapsulateInMethod(javaString));
-            }
-        }
-    }
-
-    private CompilationUnit tryParse(String javaString) throws ParseException {
-        return JavaParser.parse(new ByteArrayInputStream(javaString.getBytes()));
-    }
 }

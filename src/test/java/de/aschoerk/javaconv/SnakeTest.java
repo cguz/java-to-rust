@@ -1,5 +1,6 @@
 package de.aschoerk.javaconv;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -33,4 +34,19 @@ public class SnakeTest {
     public void testMethodDecl() {
         assertThat(call("String methodMIs();"), containsString("method_m_is"));
     }
+
+    @Test public void testTestAnnotation() {
+        assertThat(call("@Test void testMethod() { int i; }"), containsString("#[test]"));
+        assertThat(call("@Test\n void testMethod() { int a; }"), containsString("#[test]"));
+        assertThat(call("@Test(expected = Exception.class)\n void testMethod() { int b; }"), containsString("#[test]"));
+    }
+
+    @Test
+    public void testArrayConv() {
+        assertThat(call("final int tmp[][] = new int[2][4];"), containsString("let tmp: [[i32; 4]; 2] = [[0; 4]; 2];"));
+        assertThat(call("final double tmp[][] = new double[2][4];"), containsString("let tmp: [[f64; 4]; 2] = [[0.0; 4]; 2];"));
+        assertThat(call("final Double tmp[][] = new Double[2][4];"), containsString("let tmp: [[Option<Double>; 4]; 2] = [[None; 4]; 2];"));
+        assertThat(call("final Double tmp[] = {0.1, 0.2};"), containsString("let tmp: [Double; 2] = [0.1, 0.2, ]"));
+    }
+
 }
