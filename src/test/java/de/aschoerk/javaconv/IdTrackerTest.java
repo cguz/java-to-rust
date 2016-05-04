@@ -1,10 +1,11 @@
 package de.aschoerk.javaconv;
 
-import com.github.javaparser.ParseException;
-import com.github.javaparser.ast.CompilationUnit;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import com.github.javaparser.ParseException;
+import com.github.javaparser.ast.CompilationUnit;
 
 /**
  * Created by aschoerk on 03.05.16.

@@ -1,10 +1,10 @@
 package de.aschoerk.javaconv;
 
+import java.io.ByteArrayInputStream;
+
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
-
-import java.io.ByteArrayInputStream;
 
 /**
  * Created by aschoerk on 03.05.16.

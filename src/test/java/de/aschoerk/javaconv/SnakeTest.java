@@ -1,14 +1,11 @@
 package de.aschoerk.javaconv;
 
-import org.apache.commons.lang3.NotImplementedException;
-import org.hamcrest.Matcher;
-import org.hamcrest.Matchers;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertThat;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.junit.Assert.assertThat;
 
 /**
  * Created by aschoerk on 01.05.16.

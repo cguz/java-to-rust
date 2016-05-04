@@ -1,9 +1,9 @@
 package de.aschoerk.javaconv;
 
-import com.github.javaparser.ast.Node;
-
 import java.util.HashMap;
 import java.util.Stack;
+
+import com.github.javaparser.ast.Node;
 
 /**
  * Created by aschoerk on 03.05.16.
