@@ -42,6 +42,7 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
 
     @Override
     public void visit(AssignExpr n, IdTracker arg) {
+
         super.visit(n, arg);
     }
 
@@ -126,6 +127,7 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
 
     @Override
     public void visit(ArrayAccessExpr n, IdTracker arg) {
+
         super.visit(n, arg);
     }
 

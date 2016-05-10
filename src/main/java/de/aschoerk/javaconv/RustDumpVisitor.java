@@ -433,13 +433,13 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
 
         @Override public void visit(final ImportDeclaration n, final Object arg) {
             printJavaComment(n.getComment(), arg);
-            printer.print("import ");
+            printer.print("use ");
             if (n.isStatic()) {
-                printer.print("static ");
+                printer.print("/* static */");
             }
             n.getName().accept(this, arg);
             if (n.isAsterisk()) {
-                printer.print(".*");
+                printer.print("::*");
             }
             printer.printLn(";");
 
@@ -449,7 +449,25 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         @Override public void visit(final ClassOrInterfaceDeclaration n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             printJavadoc(n.getJavaDoc(), arg);
-            printModifiers(n.getModifiers());
+
+            final boolean staticSearched[] = {true};
+            Function<BodyDeclaration, Boolean> selectFieldDeclarationBooleanFunction = mem -> {
+                if (mem instanceof FieldDeclaration) {
+                    FieldDeclaration fd = (FieldDeclaration) mem;
+                    if (ModifierSet.isStatic(fd.getModifiers()) == staticSearched[0]) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            };
+            if (!isNullOrEmpty(n.getMembers())) {
+                printMembers(n.getMembers(), arg, selectFieldDeclarationBooleanFunction);
+            }
+
+
 
             if (!isNullOrEmpty(n.getImplements())) {
                 printer.print("#[derive(");
@@ -463,6 +481,8 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
                 printer.printLn(")]");
             }
 
+            printModifiers(n.getModifiers());
+
             if (n.isInterface()) {
                 printer.print("trait ");
             } else {
@@ -472,36 +492,53 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             printer.print(n.getName());
 
             printTypeParameters(n.getTypeParameters(), arg);
-            printer.printLn(" {");
-            printer.indent();
 
             if (!isNullOrEmpty(n.getExtends())) {
-                // printer.print(" extends ");
-                int count = n.getExtends().size() > 1 ? 0 : -1;
-                for (final Iterator<ClassOrInterfaceType> i = n.getExtends().iterator(); i.hasNext();) {
-                    final ClassOrInterfaceType c = i.next();
-                    printer.print("super" + (count >= 0 ? ++count + "" : "") + ": ");
-                    c.accept(this, arg);
-                    printer.printLn(";");
+                if (n.isInterface()) {
+                    printer.print(" : ");
+
+                    boolean first = true;
+                    for (ClassOrInterfaceType i: n.getExtends()) {
+                        if (first) first = false; else printer.print(" + ");
+                        i.accept(this, arg);
+                    }
+                    printer.printLn(" {");
+                    printer.indent();
+                } else {
+                    printer.printLn(" {");
+                    printer.indent();
+                    int count = n.getExtends().size() > 1 ? 0 : -1;
+                    for (final Iterator<ClassOrInterfaceType> i = n.getExtends().iterator(); i.hasNext(); ) {
+                        final ClassOrInterfaceType c = i.next();
+                        printer.print("super" + (count >= 0 ? ++count + "" : "") + ": ");
+                        c.accept(this, arg);
+                        printer.printLn(";");
+                    }
                 }
+            } else {
+                printer.printLn(" {");
+                printer.indent();
             }
 
 
+            staticSearched[0] = false;
             if (!isNullOrEmpty(n.getMembers())) {
-                printMembers(n.getMembers(), arg, mem -> mem instanceof FieldDeclaration);
+                printMembers(n.getMembers(), arg, selectFieldDeclarationBooleanFunction);
             }
 
             printOrphanCommentsEnding(n);
 
-            printer.unindent();
-            printer.printLn("}");
-            printer.printLn("");
+            if (!n.isInterface()) {
+                printer.unindent();
+                printer.printLn("}");
+                printer.printLn("");
 
-            printer.print("impl ");
-            printer.print(n.getName());
+                printer.print("impl ");
+                printer.print(n.getName());
 
-            printer.printLn(" {");
-            printer.indent();
+                printer.printLn(" {");
+                printer.indent();
+            }
             if (!isNullOrEmpty(n.getMembers())) {
                 printMembers(n.getMembers(), arg, mem -> !(mem instanceof FieldDeclaration));
             }
