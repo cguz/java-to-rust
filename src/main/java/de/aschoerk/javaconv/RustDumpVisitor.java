@@ -284,6 +284,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         }
         if (ModifierSet.isProtected(modifiers)) {
             if (commentOut) printer.print("/* protected */");
+            printer.print("pub ");
         }
         if (ModifierSet.isPublic(modifiers)) {
             printer.print("pub ");
@@ -1139,7 +1140,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
                 printer.print(".");
             }
 
-            printer.print("new ");
 
             printTypeArgs(n.getTypeArgs(), arg);
             if (!isNullOrEmpty(n.getTypeArgs())) {
@@ -1147,6 +1147,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             }
 
             n.getType().accept(this, arg);
+            printer.print("::new");
 
             printArguments(n.getArgs(), arg);
 
