@@ -11,11 +11,9 @@ import org.junit.runners.JUnit4;
  * Created by aschoerk on 01.05.16.
  */
 @RunWith(JUnit4.class)
-public class SnakeTest {
+public class SnakeTest extends Base {
 
-    private String call(String s) {
-        return JavaConverter.convert2Rust(s);
-    }
+
 
     @Test
     public void testMethodCall() {
