@@ -40,4 +40,3 @@ the converted code appears in the second Textfield.
 The java-code can be a class, a part of a class or a simple statement.
 The code must be (java-)syntactically correct. The result quite certainly will not
  be (rust-)syntactically correct ;-)
- 

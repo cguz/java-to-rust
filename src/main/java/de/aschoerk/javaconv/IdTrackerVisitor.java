@@ -4,6 +4,7 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.VariableDeclaratorId;
+import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.expr.ArrayAccessExpr;
 import com.github.javaparser.ast.expr.AssignExpr;
 import com.github.javaparser.ast.expr.FieldAccessExpr;
@@ -27,6 +28,8 @@ import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
  */
 public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
 
+    private boolean inAssignTarget = false;
+
     @Override
     public void visit(ClassOrInterfaceType n, IdTracker arg) {
         super.visit(n, arg);
@@ -39,11 +42,25 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
         arg.popBlock();
     }
 
+    private void visitComment(final Comment n, final IdTracker arg) {
+        if (n != null) {
+            n.accept(this, arg);
+        }
+    }
 
     @Override
     public void visit(AssignExpr n, IdTracker arg) {
 
-        super.visit(n, arg);
+        visitComment(n.getComment(), arg);
+        inAssignTarget = true;
+        try {
+            n.getTarget().accept(this, arg);
+        }
+        finally {
+            inAssignTarget = false;
+        }
+        n.getValue().accept(this, arg);
+
     }
 
     @Override
@@ -75,11 +92,17 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
 
     @Override
     public void visit(NameExpr n, IdTracker arg) {
+        if (inAssignTarget) {
+            arg.addChange(n.getName(), n);
+        }
         super.visit(n, arg);
     }
 
     @Override
     public void visit(QualifiedNameExpr n, IdTracker arg) {
+        if (inAssignTarget) {
+            arg.addChange(n.getName(), n);
+        }
         super.visit(n, arg);
     }
 

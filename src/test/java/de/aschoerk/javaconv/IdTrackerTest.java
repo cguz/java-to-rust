@@ -23,7 +23,7 @@ public class IdTrackerTest {
 
     @Test
     public void testLocalVariableDeclaration() throws ParseException {
-        IdTracker res = callIt("class A { void method() { int lv; } }");
+        IdTracker res = callIt("class A {\n void method() {\n int lv; } }");
     }
 
     @Test
@@ -50,4 +50,8 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { void method() { int lv = 1; System.out.println(lv); } }");
     }
 
+    @Test
+    public void testAssignMent() throws ParseException {
+        IdTracker res = callIt("class A { void method() { int lv; lv = 10; lv++; lv += 100; } }");
+    }
 }

@@ -1,7 +1,11 @@
 package de.aschoerk.javaconv;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
 import java.util.Stack;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import com.github.javaparser.ast.Node;
 
@@ -12,29 +16,7 @@ public class IdTracker {
 
     HashMap<Integer,Block> blocks = new HashMap<>();
 
-    static int blockCount = 0;
-
-    class Block {
-        Block parentBlock;
-        int id;
-        Node n;
-        HashMap<String,Node> changes = new HashMap<>();
-        HashMap<String,Node> declarations = new HashMap<>();
-        HashMap<String,Node> usages = new HashMap<>();
-
-        public Block(Node n) {
-            if (!currentBlocks.empty())
-                this.parentBlock = currentBlocks.peek();
-            this.n = n;
-            this.id = blockCount++;
-        }
-
-        public int getId() {
-            return id;
-        }
-
-
-    }
+    int blockCount = 0;
 
     Stack<Block> currentBlocks = new Stack<>();
 
@@ -51,12 +33,32 @@ public class IdTracker {
     }
 
     void pushBlock(Node n) {
-        Block block = new Block(n);
+        Block block = currentBlocks.size() > 0 ? new Block(currentBlocks.peek(), n) : new Block(n);
         currentBlocks.push(block);
         blocks.put(block.getId(), block);
     }
 
     void popBlock() {
         currentBlocks.pop();
+    }
+
+
+
+    Optional<Block> findInnerMostBlock(Node n) {
+        return blocks.values().stream()
+                .filter(block -> block.contains(n))
+                .sorted((block1, block2) ->
+                        ((Integer)block2.size()).compareTo(block1.size()))
+                .findFirst();
+    }
+
+    boolean willBeChanged(String name, Node n) {
+
+        throw new RuntimeException("not implemented");
+    }
+
+    boolean isLocalTo(String name, Node n) {
+
+        throw new RuntimeException("not implemented");
     }
 }
