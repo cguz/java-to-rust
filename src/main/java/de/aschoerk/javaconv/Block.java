@@ -1,25 +1,29 @@
 package de.aschoerk.javaconv;
 
-import com.github.javaparser.ast.Node;
-
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
+
+import com.github.javaparser.ast.Node;
 
 /**
  * Created by aschoerk on 16.05.16.
  */
 public class Block {
-    static AtomicInteger blockCount = new AtomicInteger(0);
-    public static final int FICTIONAL_LINE_SIZE = 10000000;
+    public static final long FICTIONAL_LINE_SIZE = 10000000L;
+    AtomicInteger blockCount = new AtomicInteger(0);
     Block parentBlock;
     List<Block> children = new ArrayList<>();
     int id;
     Node n;
-    HashMap<String,Node> changes = new HashMap<>();
-    HashMap<String,Node> declarations = new HashMap<>();
-    HashMap<String,Node> usages = new HashMap<>();
+    HashMap<String, List<Node>> changes = new HashMap<>();
+    HashMap<String, Node> declarations = new HashMap<>();
+    HashMap<String, List<Node>> usages = new HashMap<>();
+
+
 
     public Block(IdTracker idTracker, Node n) {
         if (!idTracker.currentBlocks.empty()) {
@@ -41,20 +45,48 @@ public class Block {
         this.id = blockCount.incrementAndGet();
     }
 
-    boolean contains(Node n) {
-        if (n.getBeginLine() < this.n.getBeginLine()) {
+    private void add(String name, Node node, HashMap<String, List<Node>> map) {
+        List<Node> value = map.get(name);
+        if (value == null) {
+            map.put(name, Arrays.asList(node));
+        } else {
+            value.add(node);
+        }
+    }
+
+    public void addChange(String name, Node node) {
+        add(name, node, changes);
+    }
+
+    public void addUsage(String name, Node node) {
+        add(name, node, usages);
+    }
+
+    public void addDeclaration(String name, Node node) {
+        if (declarations.get(name) != null) {
+            throw new RuntimeException("expected declarations to be added only once: " + node);
+        }
+        declarations.put(name, node);
+    }
+
+    boolean contains(Block b) {
+        return contains(b.n);
+    }
+
+    boolean contains(Node nP) {
+        if (nP.getBeginLine() < this.n.getBeginLine()) {
             return false;
         }
-        if (n.getBeginLine() == this.n.getBeginLine()) {
-            if (n.getBeginColumn() < this.n.getBeginColumn()) {
+        if (nP.getBeginLine() == this.n.getBeginLine()) {
+            if (nP.getBeginColumn() < this.n.getBeginColumn()) {
                 return false;
             }
         }
-        if (n.getEndLine() > this.n.getEndLine()) {
+        if (nP.getEndLine() > this.n.getEndLine()) {
             return false;
         }
-        if (n.getEndLine() == this.n.getEndLine()) {
-            return n.getEndColumn() > this.n.getEndColumn();
+        if (nP.getEndLine() == this.n.getEndLine()) {
+            return nP.getEndColumn() <= this.n.getEndColumn();
         }
         return true;
     }
@@ -63,10 +95,22 @@ public class Block {
         return id;
     }
 
-    public int size() {
+    public long size() {
         return (n.getEndLine() - n.getBeginLine()) * FICTIONAL_LINE_SIZE
                 + (n.getEndColumn() + FICTIONAL_LINE_SIZE - n.getBeginColumn());
     }
+
+    public boolean disjunctChildren() {
+        return !IntStream.range(0, children.size())
+                // find blocks whose children overlap.
+                .filter(i1 ->
+                        // following children overlap with this one ??
+                        IntStream.range(i1 + 1, children.size())
+                                .filter(i2 -> children.get(i1).contains(children.get(i2))).findAny().isPresent()
+                )
+                .findAny().isPresent();
+    }
+
 
 
 }

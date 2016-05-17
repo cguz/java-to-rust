@@ -135,94 +135,34 @@ import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
  */
 public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
 
-        boolean commentOut = false;
+    static String[] mappedNames = {
+            "NaN", "NAN",
+            "NEGATIVE_INFINITY", "NEG_INFINITY",
+            "POSITIVE_INFINITY", "INFINITY",
+            "MIN_VALUE", "MIN",
+            "MAX_VALUE", "MAX",
+    };
+    static HashMap<String, String> namesMap = new HashMap<>();
 
+    static {
+        for (int i = 0; i < mappedNames.length; i += 2) {
+            namesMap.put(mappedNames[i], mappedNames[i + 1]);
+        }
+    }
+
+        protected final SourcePrinter printer = createSourcePrinter();
+    private final IdTracker idTracker;
+    boolean commentOut = false;
         private boolean printComments;
 
         public RustDumpVisitor() {
-            this(true);
+            this(true, null);
         }
 
-        public RustDumpVisitor(boolean printComments) {
+        public RustDumpVisitor(boolean printComments, IdTracker idTracker) {
+            this.idTracker = idTracker;
             this.printComments = printComments;
         }
-
-        public static class SourcePrinter {
-
-            private final String indentation;
-
-            public SourcePrinter(final String indentation) {
-                this.indentation = indentation;
-            }
-
-            private int level = 0;
-
-            private boolean indented = false;
-
-            private final StringBuilder buf = new StringBuilder();
-
-            private List<Integer> marks = new ArrayList<>();
-
-            public void indent() {
-                level++;
-            }
-
-            public void unindent() {
-                level--;
-            }
-
-            private void makeIndent() {
-                for (int i = 0; i < level; i++) {
-                    buf.append(indentation);
-                }
-            }
-
-            public void print(final String arg) {
-                if (!indented) {
-                    makeIndent();
-                    indented = true;
-                }
-                buf.append(arg);
-            }
-
-            public void printLn(final String arg) {
-                print(arg);
-                printLn();
-            }
-
-            public void printLn() {
-                buf.append(System.getProperty("line.separator"));
-                indented = false;
-            }
-
-            public String getSource() {
-                return buf.toString();
-            }
-
-            public int push() {
-                marks.add(buf.length());
-                return marks.size();
-            }
-
-            public String getMark(int mark) {
-                return buf.substring(marks.get(mark - 1));
-            }
-
-            public void pop() {
-                buf.delete(marks.get(marks.size() - 1), buf.length());
-                marks.remove(marks.size()-1);
-            }
-
-            public void drop() {
-                marks.remove(marks.size()-1);
-            }
-
-            @Override public String toString() {
-                return getSource();
-            }
-        }
-
-        protected final SourcePrinter printer = createSourcePrinter();
 
         protected SourcePrinter createSourcePrinter() {
             return new SourcePrinter("    ");
@@ -232,26 +172,11 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             return printer.getSource();
         }
 
-    static String[] mappedNames = {
-            "NaN", "NAN",
-            "NEGATIVE_INFINITY", "NEG_INFINITY",
-            "POSITIVE_INFINITY", "INFINITY",
-            "MIN_VALUE","MIN",
-            "MAX_VALUE","MAX",
-    };
-
-    static HashMap<String, String> namesMap = new HashMap<>();
-    static {
-        for (int i = 0; i < mappedNames.length; i += 2) {
-            namesMap.put(mappedNames[i], mappedNames[i+1]);
-        }
-    }
-
-
     private String toSnakeIfNecessary(String n) {
         System.out.println("doing: " + n);
-        if (namesMap.containsKey(n))
+        if (namesMap.containsKey(n)) {
             n = namesMap.get(n);
+        }
         String name = n;
         if (Character.isLowerCase(name.charAt(0))) {
             StringBuilder sb = new StringBuilder();
@@ -272,15 +197,16 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             value = value.substring(1);
         }
         if (StringUtils.endsWithAny(value, searchStrings)) {
-            value = value.substring(0, value.length()-1);
+            value = value.substring(0, value.length() - 1);
         }
         return value;
     }
 
-
     protected void printModifiers(final int modifiers) {
         if (ModifierSet.isPrivate(modifiers)) {
-            if (commentOut) printer.print("/* private */");
+            if (commentOut) {
+                printer.print("/* private */");
+            }
         }
         if (ModifierSet.isProtected(modifiers)) {
             if (commentOut) printer.print("/* protected */");
@@ -658,7 +584,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             }
         }
 
-
         @Override public void visit(final WildcardType n, final Object arg) {
             printJavaComment(n.getComment(), arg);
             printer.print("?");
@@ -700,7 +625,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
 
             printer.print(";");
         }
-
 
     @Override public void visit(final VariableDeclarator n, final Object arg) {
         printJavaComment(n.getComment(), arg);
@@ -1649,7 +1573,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             printer.print("}");
         }
 
-
         private void encapsulateIfNotBlock(Statement n, final Object arg) {
             if (n instanceof BlockStmt) {
                 n.accept(this, arg);
@@ -1821,7 +1744,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             }
         }
 
-
         @Override
         public void visit(MethodReferenceExpr n, Object arg) {
             printJavaComment(n.getComment(), arg);
@@ -1882,7 +1804,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             }
         }
 
-
         private void printOrphanCommentsEnding(final Node node){
             List<Node> everything = new LinkedList<Node>();
             everything.addAll(node.getChildrenNodes());
@@ -1902,6 +1823,78 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             }
             for (int i=0; i<commentsAtEnd; i++){
                 everything.get(everything.size()-commentsAtEnd+i).accept(this, null);
+            }
+        }
+
+        public static class SourcePrinter {
+
+            private final String indentation;
+            private final StringBuilder buf = new StringBuilder();
+            private int level = 0;
+
+            private boolean indented = false;
+            private List<Integer> marks = new ArrayList<>();
+
+            public SourcePrinter(final String indentation) {
+                this.indentation = indentation;
+            }
+
+            public void indent() {
+                level++;
+            }
+
+            public void unindent() {
+                level--;
+            }
+
+            private void makeIndent() {
+                for (int i = 0; i < level; i++) {
+                    buf.append(indentation);
+                }
+            }
+
+            public void print(final String arg) {
+                if (!indented) {
+                    makeIndent();
+                    indented = true;
+                }
+                buf.append(arg);
+            }
+
+            public void printLn(final String arg) {
+                print(arg);
+                printLn();
+            }
+
+            public void printLn() {
+                buf.append(System.getProperty("line.separator"));
+                indented = false;
+            }
+
+            public String getSource() {
+                return buf.toString();
+            }
+
+            public int push() {
+                marks.add(buf.length());
+                return marks.size();
+            }
+
+            public String getMark(int mark) {
+                return buf.substring(marks.get(mark - 1));
+            }
+
+            public void pop() {
+                buf.delete(marks.get(marks.size() - 1), buf.length());
+                marks.remove(marks.size()-1);
+            }
+
+            public void drop() {
+                marks.remove(marks.size()-1);
+            }
+
+            @Override public String toString() {
+                return getSource();
             }
         }
 

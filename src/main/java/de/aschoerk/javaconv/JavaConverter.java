@@ -1,5 +1,7 @@
 package de.aschoerk.javaconv;
 
+import static de.aschoerk.javaconv.PartParser.createCompilationUnit;
+
 import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
 
@@ -13,9 +15,13 @@ public class JavaConverter {
 
     public String convert(String javaString) {
         try {
-            CompilationUnit res = PartParser.createCompilationUnit(javaString);
-            RustDumpVisitor dumper = new RustDumpVisitor(true);
-            dumper.visit(res, null);
+            CompilationUnit  compilationUnit = createCompilationUnit(javaString);
+            IdTrackerVisitor idTrackerVisitor = new IdTrackerVisitor();
+            IdTracker idTracker = new IdTracker();
+            idTrackerVisitor.visit(compilationUnit, idTracker);
+
+            RustDumpVisitor dumper = new RustDumpVisitor(true, idTracker);
+            dumper.visit(compilationUnit, null);
             return dumper.getSource();
         } catch (ParseException e) {
             return e.toString();
