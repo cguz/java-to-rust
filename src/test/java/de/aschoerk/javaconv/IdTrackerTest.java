@@ -40,7 +40,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A {\n void method() {\n int lv; } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(0));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(1));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
     }
 
     @Test
@@ -48,7 +48,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { int iv; void method() { } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(0));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(1));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
     }
 
     @Test
@@ -56,37 +56,53 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { void method(int pi) { } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(0));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(1));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
     }
 
     @Test
     public void testParameterUsage() throws ParseException {
         IdTracker res = callIt("class A { void method(int pi) { System.out.println(pi); } }");
-        assertThat(res.getUsages().values(), Matchers.hasSize(1));
+        assertThat(res.getUsages().values(), Matchers.hasSize(3));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(1));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        checkUsages(res);
     }
 
     @Test
     public void testInstanceVariableUsage() throws ParseException {
         IdTracker res = callIt("class A { int iv; void method() { System.out.println(iv); } }");
-        assertThat(res.getUsages().values(), Matchers.hasSize(1));
+        assertThat(res.getUsages().values(), Matchers.hasSize(3));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(1));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        checkUsages(res);
     }
-    @Test
-    public void testLocalVariableUsage() throws ParseException {
-        IdTracker res = callIt("class A { void method() { int lv = 1; System.out.println(lv); } }");
-        assertThat(res.getUsages().values(), Matchers.hasSize(1));
-        assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(1));
+
+    private void checkUsages(IdTracker res) {
+        res.getUsages().entrySet().stream().forEach(e -> {
+            e.getValue().forEach(n ->
+                    res.findDeclarationBlockFor(e.getKey(), n)
+            );
+
+        }
+        );
     }
 
     @Test
-    public void testAssignMent() throws ParseException {
+    public void testLocalVariableUsage() throws ParseException {
+        IdTracker res = callIt("class A { void method() { int lv = 1; System.out.println(lv); } }");
+        assertThat(res.getUsages().values(), Matchers.hasSize(3));  // lv, System, println
+        assertThat(res.getChanges().values(), Matchers.hasSize(0));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(2)); //
+        checkUsages(res);
+    }
+
+
+    @Test
+    public void testAssignment() throws ParseException {
         IdTracker res = callIt("class A { void method() { int lv; lv = 10; lv++; lv += 100; } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(1));
-        assertThat(res.getChanges().values(), Matchers.hasSize(3));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(1));
+        assertThat(res.getChanges().values(), Matchers.hasSize(1));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        checkUsages(res);
     }
 }

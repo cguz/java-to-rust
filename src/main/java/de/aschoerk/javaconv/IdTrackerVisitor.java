@@ -5,15 +5,7 @@ import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.VariableDeclaratorId;
 import com.github.javaparser.ast.comments.Comment;
-import com.github.javaparser.ast.expr.ArrayAccessExpr;
-import com.github.javaparser.ast.expr.AssignExpr;
-import com.github.javaparser.ast.expr.FieldAccessExpr;
-import com.github.javaparser.ast.expr.LambdaExpr;
-import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.expr.NameExpr;
-import com.github.javaparser.ast.expr.QualifiedNameExpr;
-import com.github.javaparser.ast.expr.ThisExpr;
-import com.github.javaparser.ast.expr.VariableDeclarationExpr;
+import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.CatchClause;
 import com.github.javaparser.ast.stmt.ForStmt;
@@ -64,6 +56,24 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
     }
 
     @Override
+    public void visit(UnaryExpr n, IdTracker arg) {
+        try {
+            switch (n.getOperator()) {
+                case preIncrement:
+                case preDecrement:
+                    inAssignTarget = true;
+                    break;
+                default:
+                    inAssignTarget = false;
+            }
+            n.getExpr().accept(this, arg);
+        }
+        finally {
+            inAssignTarget = false;
+        }
+    }
+
+    @Override
     public void visit(BlockStmt n, IdTracker arg) {
         arg.pushBlock(n);
         super.visit(n, arg);
@@ -86,6 +96,7 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
     @Override
     public void visit(MethodDeclaration n, IdTracker arg) {
         arg.pushBlock(n);
+        arg.addDeclaration(n.getName(), n);
         super.visit(n, arg);
         arg.popBlock();
     }
@@ -94,6 +105,8 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
     public void visit(NameExpr n, IdTracker arg) {
         if (inAssignTarget) {
             arg.addChange(n.getName(), n);
+        } else {
+            arg.addUsage(n.getName(), n);
         }
         super.visit(n, arg);
     }
@@ -161,6 +174,7 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
 
     @Override
     public void visit(FieldDeclaration n, IdTracker arg) {
+
         super.visit(n, arg);
     }
 }

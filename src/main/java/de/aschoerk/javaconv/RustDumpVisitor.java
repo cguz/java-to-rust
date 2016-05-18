@@ -1032,9 +1032,9 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             printJavaComment(n.getComment(), arg);
             if (n.getClassExpr() != null) {
                 n.getClassExpr().accept(this, arg);
-                printer.print(".");
+            } else {
+                printer.print("self");
             }
-            printer.print("this");
         }
 
         @Override public void visit(final SuperExpr n, final Object arg) {

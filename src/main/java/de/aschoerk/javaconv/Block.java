@@ -48,7 +48,7 @@ public class Block {
     private void add(String name, Node node, HashMap<String, List<Node>> map) {
         List<Node> value = map.get(name);
         if (value == null) {
-            map.put(name, Arrays.asList(node));
+            map.put(name, new ArrayList<Node>() {{ add(node); }} );
         } else {
             value.add(node);
         }

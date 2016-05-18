@@ -1,11 +1,6 @@
 package de.aschoerk.javaconv;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Stack;
+import java.util.*;
 import java.util.function.Function;
 
 import com.github.javaparser.ast.Node;
@@ -15,7 +10,7 @@ import com.github.javaparser.ast.Node;
  */
 public class IdTracker {
 
-    HashMap<Integer, Block> blocks = new HashMap<>();
+    List<Block> blocks = new ArrayList<>();
 
     Stack<Block> currentBlocks = new Stack<>();
 
@@ -41,7 +36,7 @@ public class IdTracker {
             block = new Block(n);
         }
         currentBlocks.push(block);
-        blocks.put(block.getId(), block);
+        blocks.add(block);
     }
 
     void popBlock() {
@@ -52,7 +47,7 @@ public class IdTracker {
     }
 
     Optional<Block> findRoot() {
-        return blocks.values().stream()
+        return blocks.stream()
                 .sorted((block1, block2) ->
                         ((Long) block2.size()).compareTo(block1.size()))
                 .findFirst();
@@ -60,7 +55,7 @@ public class IdTracker {
 
 
     Optional<Block> findInnerMostBlock(Node n) {
-        return blocks.values().stream()
+        return blocks.stream()
                 .filter(block -> block.contains(n))
                 .sorted((block1, block2) ->
                         ((Long) block1.size()).compareTo(block2.size()))
@@ -78,22 +73,21 @@ public class IdTracker {
         throw new RuntimeException("not implemented");
     }
 
-    Optional<Block> findDeclarationBlockFor(String name, Node n) {
+    Optional<Node> findDeclarationBlockFor(String name, Node n) {
         Optional<Block> block = findInnerMostBlock(n);
-        if (block.isPresent()) {
-            final Block b = block.get();
-            do {
-                if (b.declarations.get(name) == null) {
-                    if (b.parentBlock == null) {
-                        return Optional.empty();
-                    }
+        do {
+            if (block.isPresent()) {
+                final Block b = block.get();
+                Node node = b.declarations.get(name);
+                if (node == null) {
+                    block = b.parentBlock == null ? Optional.empty() : Optional.of(b.parentBlock);
                 } else {
-                    return Optional.of(b);
+                    return Optional.of(node);
                 }
-            } while (true);
-        } else {
-            return Optional.empty();
-        }
+            } else {
+                return Optional.empty();
+            }
+        } while (true);
     }
 
     String checkBlockStructure() {
@@ -109,7 +103,7 @@ public class IdTracker {
                 sb.append("Expected Blockroot to have Id 1\n");
             }
         }
-        if (blocks.values().stream().filter(b -> !b.disjunctChildren()).findAny().isPresent()) {
+        if (blocks.stream().filter(b -> !b.disjunctChildren()).findAny().isPresent()) {
             sb.append("Found children which are not disjunct\n");
         }
         return sb.toString();
@@ -117,7 +111,7 @@ public class IdTracker {
 
     private HashMap<String, List<Node>>  getAll(Function<Block, HashMap<String, List<Node>> > f) {
         final HashMap<String, List<Node>> res = new HashMap<>();
-        blocks.values().stream()
+        blocks.stream()
                 .map(f::apply)
                 .forEach(u -> u.keySet().stream().forEach(
                         k -> {
@@ -141,7 +135,7 @@ public class IdTracker {
 
     public Map<String, List<Node>> getDeclarations() {
         final HashMap<String, List<Node>> res = new HashMap<>();
-        blocks.values().stream()
+        blocks.stream()
                 .map(b -> b.declarations)
                 .forEach(u -> u.keySet().stream().forEach(
                         k -> {
