@@ -15,15 +15,16 @@ public class IdTracker {
     Stack<Block> currentBlocks = new Stack<>();
 
     void addChange(String name, Node n) {
-        currentBlocks.peek().addChange(name, n);
+        if (!currentBlocks.empty()) currentBlocks.peek().addChange(name, n);
     }
 
     void addDeclaration(String name, Node n) {
-        currentBlocks.peek().addDeclaration(name, n);
+        if (!currentBlocks.empty()) currentBlocks.peek().addDeclaration(name, n);
     }
 
     void addUsage(String name, Node n) {
-        currentBlocks.peek().addUsage(name, n);
+        if (!currentBlocks.empty())
+            currentBlocks.peek().addUsage(name, n);
     }
 
     void pushBlock(Node n) {
@@ -73,7 +74,7 @@ public class IdTracker {
         throw new RuntimeException("not implemented");
     }
 
-    Optional<Node> findDeclarationBlockFor(String name, Node n) {
+    Optional<Node> findDeclarationNodeFor(String name, Node n) {
         Optional<Block> block = findInnerMostBlock(n);
         do {
             if (block.isPresent()) {
@@ -133,6 +134,36 @@ public class IdTracker {
         return getAll(b -> b.changes);
     }
 
+    private boolean isChangedInSingleBlock(String name, Block b) {
+        if (b.changes.get(name) != null)
+            return true;
+        else
+            return false;
+    }
+
+    private boolean isDeclaredInSingleBlock(String name, Block b) {
+        if (b.declarations.get(name) != null)
+            return true;
+        else
+            return false;
+    }
+
+    private boolean isChangedInChildrenOfBlock(String name, Block bP) {
+        return bP.children.stream()
+                .filter(child ->
+             !isDeclaredInSingleBlock(name, child)
+               && (isChangedInSingleBlock(name, child) || isChangedInChildrenOfBlock(name, child)))
+                .findAny().isPresent();
+    }
+
+    public boolean isChanged(String name, Node n) {
+        Optional<Block> b = findInnerMostBlock(n);
+        if (b.isPresent()) {
+            return isChangedInSingleBlock(name, b.get()) || isChangedInChildrenOfBlock(name, b.get());
+        }
+        return false;
+    }
+
     public Map<String, List<Node>> getDeclarations() {
         final HashMap<String, List<Node>> res = new HashMap<>();
         blocks.stream()
@@ -142,7 +173,7 @@ public class IdTracker {
                             if (res.containsKey(k)) {
                                 res.get(k).add(u.get(k));
                             } else  {
-                                res.put(k, Collections.singletonList(u.get(k)));
+                                res.put(k, new ArrayList<>(Collections.singletonList(u.get(k))));
                             }
                         }
                 ));

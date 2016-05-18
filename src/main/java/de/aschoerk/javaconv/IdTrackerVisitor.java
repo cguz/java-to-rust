@@ -1,6 +1,7 @@
 package de.aschoerk.javaconv;
 
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.VariableDeclaratorId;
@@ -30,6 +31,7 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
     @Override
     public void visit(ClassOrInterfaceDeclaration n, IdTracker arg) {
         arg.pushBlock(n);
+        arg.addDeclaration(n.getName(), n);
         super.visit(n, arg);
         arg.popBlock();
     }
@@ -95,8 +97,12 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
 
     @Override
     public void visit(MethodDeclaration n, IdTracker arg) {
+        try {
+            arg.addDeclaration(n.getName(), n);
+        } catch( RuntimeException ex) {
+            ; // ignore duplicate Methods with the same name. Let it be declared just once, so that self can be constructed.
+        }
         arg.pushBlock(n);
-        arg.addDeclaration(n.getName(), n);
         super.visit(n, arg);
         arg.popBlock();
     }
@@ -176,5 +182,12 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
     public void visit(FieldDeclaration n, IdTracker arg) {
 
         super.visit(n, arg);
+    }
+
+    @Override
+    public void visit(final ConstructorDeclaration n, final IdTracker arg) {
+        arg.pushBlock(n);
+        super.visit(n, arg);
+        arg.popBlock();
     }
 }

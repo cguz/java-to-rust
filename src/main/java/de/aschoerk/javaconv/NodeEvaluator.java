@@ -4,6 +4,7 @@ package de.aschoerk.javaconv;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.ModifierSet;
 import com.github.javaparser.ast.body.VariableDeclaratorId;
 
 /**
@@ -11,12 +12,24 @@ import com.github.javaparser.ast.body.VariableDeclaratorId;
  */
 public class NodeEvaluator {
 
-    static boolean isFieldDeclaration(Node n) {
-        return n instanceof VariableDeclaratorId && n.getParentNode().getParentNode() instanceof FieldDeclaration;
+    static boolean isNonStaticFieldDeclaration(Node n) {
+        if (n instanceof VariableDeclaratorId) {
+            if(n.getParentNode().getParentNode() instanceof FieldDeclaration) {
+                FieldDeclaration fd = (FieldDeclaration)n.getParentNode().getParentNode();
+                if (!ModifierSet.isStatic(fd.getModifiers())) {
+                    return true;
+                }
+            };
+        }
+        return false;
     }
 
-    static boolean isMethodDeclaration(Node n) {
-        return n instanceof MethodDeclaration;
+    static boolean isNonStaticMethodDeclaration(Node n) {
+       if (n instanceof MethodDeclaration) {
+           if (!ModifierSet.isStatic(((MethodDeclaration)n).getModifiers()))
+               return true;
+       }
+        return false;
     }
 
 }

@@ -80,7 +80,7 @@ public class IdTrackerTest {
     private void checkUsages(IdTracker res) {
         res.getUsages().entrySet().stream().forEach(e -> {
             e.getValue().forEach(n ->
-                    res.findDeclarationBlockFor(e.getKey(), n)
+                    res.findDeclarationNodeFor(e.getKey(), n)
             );
 
         }
@@ -103,6 +103,24 @@ public class IdTrackerTest {
         assertThat(res.getUsages().values(), Matchers.hasSize(1));
         assertThat(res.getChanges().values(), Matchers.hasSize(1));
         assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        checkUsages(res);
+    }
+
+    @Test
+    public void testMultMethods() throws ParseException {
+        IdTracker res = callIt("class A { void method() { int lv; } void method(int i) { int lv; } }");
+        assertThat(res.getUsages().values(), Matchers.hasSize(0));
+        assertThat(res.getChanges().values(), Matchers.hasSize(0));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(4));
+        checkUsages(res);
+    }
+
+    @Test
+    public void testMultConstructors() throws ParseException {
+        IdTracker res = callIt("class A { A() { int lv; } A(int i) { int lv; } }");
+        assertThat(res.getUsages().values(), Matchers.hasSize(0));
+        assertThat(res.getChanges().values(), Matchers.hasSize(0));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3));
         checkUsages(res);
     }
 }
