@@ -40,7 +40,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A {\n void method() {\n int lv; } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(0));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3));  // A, method, lv
     }
 
     @Test
@@ -48,7 +48,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { int iv; void method() { } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(0));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3)); // A, iv, method
     }
 
     @Test
@@ -56,7 +56,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { void method(int pi) { } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(0));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3));
     }
 
     @Test
@@ -64,7 +64,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { void method(int pi) { System.out.println(pi); } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(3));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3));  // A, method, pi
         checkUsages(res);
     }
 
@@ -73,7 +73,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { int iv; void method() { System.out.println(iv); } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(3));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3));  // A, iv, method
         checkUsages(res);
     }
 
@@ -92,7 +92,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { void method() { int lv = 1; System.out.println(lv); } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(3));  // lv, System, println
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(2)); //
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3)); //A, method, lv
         checkUsages(res);
     }
 
@@ -102,7 +102,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { void method() { int lv; lv = 10; lv++; lv += 100; } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(1));
         assertThat(res.getChanges().values(), Matchers.hasSize(1));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(2));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3)); // A,method, lv
         checkUsages(res);
     }
 
@@ -111,7 +111,7 @@ public class IdTrackerTest {
         IdTracker res = callIt("class A { void method() { int lv; } void method(int i) { int lv; } }");
         assertThat(res.getUsages().values(), Matchers.hasSize(0));
         assertThat(res.getChanges().values(), Matchers.hasSize(0));
-        assertThat(res.getDeclarations().values(), Matchers.hasSize(4));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(4)); // A, method, lv, i, lv
         checkUsages(res);
     }
 
