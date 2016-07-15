@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.github.javaparser.ast.Node;
 
 /**
@@ -20,7 +22,7 @@ public class Block {
     int id;
     Node n;
     HashMap<String, List<Node>> changes = new HashMap<>();
-    HashMap<String, Node> declarations = new HashMap<>();
+    HashMap<String, Pair<TypeDescription,Node>> declarations = new HashMap<>();
     HashMap<String, List<Node>> usages = new HashMap<>();
 
 
@@ -62,11 +64,11 @@ public class Block {
         add(name, node, usages);
     }
 
-    public void addDeclaration(String name, Node node) {
+    public void addDeclaration(String name, Pair<TypeDescription,Node> description) {
         if (declarations.get(name) != null) {
-            throw new RuntimeException("expected declarations to be added only once: " + node);
+            throw new RuntimeException("expected declarations to be added only once: " + description.getRight());
         }
-        declarations.put(name, node);
+        declarations.put(name, description);
     }
 
     boolean contains(Block b) {

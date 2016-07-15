@@ -19,8 +19,10 @@ public class JavaConverter {
             IdTrackerVisitor idTrackerVisitor = new IdTrackerVisitor();
             IdTracker idTracker = new IdTracker();
             idTrackerVisitor.visit(compilationUnit, idTracker);
+            TypeTrackerVisitor typeTrackerVisitor = new TypeTrackerVisitor(idTracker);
+            typeTrackerVisitor.visit(compilationUnit, null);
 
-            RustDumpVisitor dumper = new RustDumpVisitor(true, idTracker);
+            RustDumpVisitor dumper = new RustDumpVisitor(true, idTracker, typeTrackerVisitor);
             dumper.visit(compilationUnit, null);
             return dumper.getSource();
         } catch (ParseException e) {

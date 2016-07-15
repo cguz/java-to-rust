@@ -14,6 +14,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
@@ -142,16 +143,18 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     protected final SourcePrinter printer = createSourcePrinter();
 
     private final IdTracker idTracker;
+    private final TypeTrackerVisitor typeTracker;
 
     boolean commentOut = false;
     private boolean printComments;
 
     public RustDumpVisitor() {
-        this(true, null);
+        this(true, null, null);
     }
 
-    public RustDumpVisitor(boolean printComments, IdTracker idTracker) {
+    public RustDumpVisitor(boolean printComments, IdTracker idTracker, TypeTrackerVisitor typeTrackerVisitor) {
         this.idTracker = idTracker;
+        this.typeTracker = typeTrackerVisitor;
         this.printComments = printComments;
     }
 
@@ -164,7 +167,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     }
 
     private String toSnakeIfNecessary(String n) {
-        System.out.println("doing: " + n);
         if (namesMap.containsKey(n)) {
             n = namesMap.get(n);
         }
@@ -187,9 +189,16 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         if (value.startsWith("+")) {
             value = value.substring(1);
         }
+        if (value.startsWith(".")) {
+            value = "0" + value;
+        }
         if (StringUtils.endsWithAny(value, searchStrings)) {
             value = value.substring(0, value.length() - 1);
         }
+        if (value.endsWith(".")) {
+            value = value + "0";
+        }
+        value = value.replace("d.",".");
         return value;
     }
 
@@ -284,6 +293,18 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         if (!isNullOrEmpty(args)) {
             for (final Iterator<Expression> i = args.iterator(); i.hasNext();) {
                 final Expression e = i.next();
+                if (e instanceof NameExpr) {
+                    NameExpr ne = (NameExpr)e;
+                    Optional<Pair<TypeDescription, Node>> decl = idTracker.findDeclarationNodeFor(ne.getName(), ne);
+                    if (decl.isPresent() && decl.get().getLeft() != null) {
+                        final TypeDescription left = decl.get().getLeft();
+                        if (!left.clazz.isPrimitive() || left.getArrayCount() > 0) {
+                            printer.print("&");
+                        }
+                    }
+                } else if (e instanceof MethodCallExpr) {
+                    printer.print("&");
+                }
                 e.accept(this, arg);
                 if (i.hasNext()) {
                     printer.print(", ");
@@ -309,6 +330,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     public void visit(final CompilationUnit n, final Object arg) {
         printJavaComment(n.getComment(), arg);
 
+        /*
         if (n.getPackage() != null) {
             n.getPackage().accept(this, arg);
         }
@@ -318,6 +340,12 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
                 i.accept(this, arg);
             }
             printer.printLn();
+        }
+        */
+
+        if (idTracker.hasThrows()) {
+            printer.printLn("use std::rc::*;");
+            printer.printLn("use java::exc::*;");
         }
 
         if (!isNullOrEmpty(n.getTypes())) {
@@ -348,8 +376,11 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     public void visit(final NameExpr n, final Object arg) {
         printJavaComment(n.getComment(), arg);
 
-        Optional<Node> b = idTracker.findDeclarationNodeFor(n.getName(), n);
-        if (b.isPresent() && (NodeEvaluator.isNonStaticFieldDeclaration(b.get()) || NodeEvaluator.isNonStaticMethodDeclaration(b.get()))) {
+        Optional<Pair<TypeDescription, Node>> b = idTracker.findDeclarationNodeFor(n.getName(), n);
+
+        if (b.isPresent()
+            && (NodeEvaluator.isNonStaticFieldDeclaration(b.get().getRight()) && !idTracker.isInConstructor()
+                || NodeEvaluator.isNonStaticMethodDeclaration(b.get().getRight()))) {
             printer.print("self.");
         }
         printer.print(toSnakeIfNecessary(n.getName()));
@@ -571,9 +602,13 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final ReferenceType n, final Object arg) {
         printJavaComment(n.getComment(), arg);
+
+        for (int i = 0; i < n.getArrayCount(); i++) {
+            printer.print("Vec<");
+        }
         n.getType().accept(this, arg);
         for (int i = 0; i < n.getArrayCount(); i++) {
-            printer.print("[]");
+            printer.print(">");
         }
     }
 
@@ -748,14 +783,14 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
                 sb.append(acceptAndCut(t, arg));
                 reverse(dims);
                 for (Integer i : dims) {
-                    sb.insert(0, "[");
+                    sb.insert(0, "vec![");
                     sb.append("; ").append(i).append("]");
                 }
                 printer.print(": ");
                 printer.print(sb.toString());
                 printer.print(" = ");
             }
-            printer.print("[");
+            printer.print("vec![");
 
             for (Expression val : n.getValues()) {
                 val.accept(this, null);
@@ -891,6 +926,10 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
 
     @Override
     public void visit(final BinaryExpr n, final Object arg) {
+        if (String.class.equals(idTracker.getType(n)))   {
+            printStringExpression(n, arg);
+            return;
+        }
         printJavaComment(n.getComment(), arg);
         n.getLeft().accept(this, arg);
         printer.print(" ");
@@ -957,6 +996,51 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         n.getRight().accept(this, arg);
     }
 
+    List<Node> genStringExprSequence(BinaryExpr n) {
+        List<Node> result = new ArrayList<>();
+        if (n.getOperator() == BinaryExpr.Operator.plus) {
+            genStringPart(n.getLeft(), result);
+            genStringPart(n.getRight(), result);
+        } else {
+            result.add(n);
+            return result;
+        }
+
+
+        return result;
+    }
+
+    private void genStringPart(Node n, List<Node> result) {
+        if (n instanceof BinaryExpr) {
+            result.addAll(genStringExprSequence(((BinaryExpr)n)));
+        } else {
+            result.add(n);
+        }
+    }
+
+    private void printStringExpression(BinaryExpr n, final Object arg) {
+        List<Node> binChain = genStringExprSequence(n);
+        printer.print("format!(\"");
+        for (Node node: binChain) {
+            if (node instanceof StringLiteralExpr) {
+                String value = ((StringLiteralExpr) node).getValue();
+                printer.print(value);
+            } else {
+                printer.print("{}");
+            }
+        }
+        printer.print("\"");
+
+        for (Node node: binChain) {
+            if (!(node instanceof StringLiteralExpr)) {
+                printer.print(", ");
+                node.accept(this,arg);
+            }
+        }
+        printer.print(")");
+
+    }
+
     @Override
     public void visit(final CastExpr n, final Object arg) {
         printJavaComment(n.getComment(), arg);
@@ -994,6 +1078,13 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printer.print(")");
     }
 
+    String replaceLengthAtEnd(String fieldAccess) {
+        if (fieldAccess.equals("length"))
+            return "len()";
+        else
+            return fieldAccess;
+    }
+
     @Override
     public void visit(final FieldAccessExpr n, final Object arg) {
         printJavaComment(n.getComment(), arg);
@@ -1001,14 +1092,14 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         n.getScope().accept(this, arg);
         String scope = printer.getMark(mark);
         printer.drop();
-        int i = StringUtils.lastIndexOfAny(scope, "\n", "\t", " ", ".");
+        int i = StringUtils.lastIndexOfAny(StringUtils.stripEnd(scope," "), "\n", "\t", " ", ".");
         String accessed = i <= 0 ? scope : scope.substring(i + 1);
-        if (Character.isUpperCase(accessed.charAt(0))) {
+        if (Character.isUpperCase(accessed.charAt(0)) && accessed.length() > 1 && Character.isLowerCase(accessed.charAt(1))) {
             printer.print("::");
         } else {
             printer.print(".");
         }
-        printer.print(n.getField());
+        printer.print(replaceLengthAtEnd(n.getField()));
     }
 
     @Override
@@ -1036,10 +1127,49 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printer.print(removePlusAndSuffix(value, "D", "d"));
     }
 
+    boolean isFloatInSiblings(Node n) {
+        if (n == null || n.getParentNode() == null)
+            return false;
+        if (stopHistorySearch(n.getParentNode()))
+            return false;
+        List<Node> siblings = n.getParentNode().getChildrenNodes();
+        for (Node sibling : siblings) {
+            if (idTracker.isFloat(sibling)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    boolean isFloatInHistory(Node n) {
+        if (stopHistorySearch(n))
+            return false;
+        if (n == null) return false;
+        if (isFloatInSiblings(n))
+            return true;
+        Class clazz = idTracker.getType(n);
+        if (idTracker.isFloat(clazz)) {
+            return true;
+        } else {
+            return isFloatInHistory(n.getParentNode());
+        }
+
+    }
+
+    private boolean stopHistorySearch(Node n) {
+        return n instanceof VariableDeclarator || n instanceof MethodCallExpr || n instanceof Statement || n instanceof ArrayAccessExpr;
+    }
+
     @Override
     public void visit(final IntegerLiteralExpr n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printer.print(removePlusAndSuffix(n.getValue()));
+        String output = removePlusAndSuffix(n.getValue());
+        if (isFloatInHistory(n)) {
+            printer.print(output + ".0");
+
+        } else {
+            printer.print(output);
+        }
     }
 
     @Override
@@ -1086,7 +1216,11 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         if (n.getClassExpr() != null) {
             n.getClassExpr().accept(this, arg);
         } else {
-            printer.print("self");
+            if (!idTracker.isInConstructor())
+                printer.print("self");
+            else {
+                printer.print("let ");
+            }
         }
     }
 
@@ -1105,9 +1239,29 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printJavaComment(n.getComment(), arg);
         if (n.getScope() != null) {
             n.getScope().accept(this, arg);
-            printer.print(".");
+            if (Character.isUpperCase(n.getScope().toString().charAt(0)))
+                printer.print("::");
+            else
+                printer.print(".");
         }
         printTypeArgs(n.getTypeArgs(), arg);
+        if (n.getScope() == null) {
+            Optional<Pair<TypeDescription, Node>> decl = idTracker.findDeclarationNodeFor(n.getName(), n);
+            if (decl.isPresent()) {
+                Node declNode = decl.get().getRight();
+                if (declNode != null) {
+                    if (declNode instanceof MethodDeclaration) {
+                        MethodDeclaration methodDeclaration = (MethodDeclaration)declNode;
+                        if (!ModifierSet.isStatic(methodDeclaration.getModifiers()))
+                            printer.print("self.");
+                        else
+                            printer.print("::");
+                    } else {
+                        printer.print("self.");
+                    }
+                }
+            }
+        }
         printer.print(toSnakeIfNecessary(n.getName()));
         printArguments(n.getArgs(), arg);
     }
@@ -1177,18 +1331,30 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         }
     }
 
+    boolean isEmbeddedInStmt(UnaryExpr n) {
+        Node parent = n.getParentNode();
+        if (parent instanceof ExpressionStmt || parent instanceof ForStmt) {
+            return false;
+        }
+        return true;
+    }
+
     @Override
     public void visit(UnaryExpr n, Object arg) {
         printJavaComment(n.getComment(), arg);
         String unarySuffix = "";
         switch (n.getOperator()) {
             case preIncrement:
+                unarySuffix = " += 1";
             case posIncrement:
-                unarySuffix = "+= 1";
+                if (unarySuffix.length() == 0)
+                    unarySuffix = " += 1" + (isEmbeddedInStmt(n) ? " !!!check!!! post increment" : "");
             case preDecrement:
+                if (unarySuffix.length() == 0)
+                    unarySuffix = " -= 1";
             case posDecrement:
                 if (unarySuffix.length() == 0)
-                    unarySuffix = "-= 1";
+                    unarySuffix = " -= 1" + (isEmbeddedInStmt(n) ? " !!!check!!! post decrement" : "");
             case positive:
                 n.getExpr().accept(this, arg);
                 printer.print(unarySuffix);
@@ -1200,122 +1366,146 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
 
     @Override
     public void visit(final ConstructorDeclaration n, final Object arg) {
-        printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
-        printModifiers(n.getModifiers());
+        idTracker.setInConstructor(true);
+        try {
+            printJavaComment(n.getComment(), arg);
+            printJavadoc(n.getJavaDoc(), arg);
+            printModifiers(n.getModifiers());
 
-        printTypeParameters(n.getTypeParameters(), arg);
-        if (!n.getTypeParameters().isEmpty()) {
+            printTypeParameters(n.getTypeParameters(), arg);
+            if(!n.getTypeParameters().isEmpty()) {
+                printer.print(" ");
+            }
+            printer.print("fn new");
+
+            printer.print("(");
+            if(!n.getParameters().isEmpty()) {
+                for (final Iterator<Parameter> i = n.getParameters().iterator(); i.hasNext(); ) {
+                    final Parameter p = i.next();
+                    p.accept(this, arg);
+                    if(i.hasNext()) {
+                        printer.print(", ");
+                    }
+                }
+            }
+            printer.print(") -> ");
+            printer.print(n.getName());
+
+            if(!isNullOrEmpty(n.getThrows())) {
+                printer.print(" throws ");
+                for (final Iterator<NameExpr> i = n.getThrows().iterator(); i.hasNext(); ) {
+                    final NameExpr name = i.next();
+                    name.accept(this, arg);
+                    if(i.hasNext()) {
+                        printer.print(", ");
+                    }
+                }
+            }
             printer.print(" ");
+            n.getBlock().accept(this, arg);
         }
-        printer.print("fn new");
-
-        printer.print("(");
-        if (!n.getParameters().isEmpty()) {
-            for (final Iterator<Parameter> i = n.getParameters().iterator(); i.hasNext();) {
-                final Parameter p = i.next();
-                p.accept(this, arg);
-                if (i.hasNext()) {
-                    printer.print(", ");
-                }
-            }
+        finally {
+            idTracker.setInConstructor(false);
         }
-        printer.print(") -> ");
-        printer.print(n.getName());
-
-        if (!isNullOrEmpty(n.getThrows())) {
-            printer.print(" throws ");
-            for (final Iterator<NameExpr> i = n.getThrows().iterator(); i.hasNext();) {
-                final NameExpr name = i.next();
-                name.accept(this, arg);
-                if (i.hasNext()) {
-                    printer.print(", ");
-                }
-            }
-        }
-        printer.print(" ");
-        n.getBlock().accept(this, arg);
     }
 
     @Override
     public void visit(final MethodDeclaration n, final Object arg) {
-        printOrphanCommentsBeforeThisChildNode(n);
+        idTracker.setCurrentMethod(n.getName());
+        try {
+            printOrphanCommentsBeforeThisChildNode(n);
 
-        printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
+            printJavaComment(n.getComment(), arg);
+            printJavadoc(n.getJavaDoc(), arg);
 
-        for (AnnotationExpr a : n.getAnnotations()) {
-            if (a.getName().getName().equals("Test")) {
-                printer.printLn("#[test]");
+            for (AnnotationExpr a : n.getAnnotations()) {
+                if (a.getName().getName().equals("Test")) {
+                    printer.printLn("#[test]");
+                }
+            }
+            printModifiers(n.getModifiers());
+            printer.print("fn ");
+            if (n.isDefault()) {
+                printer.print("default ");
+            }
+            printTypeParameters(n.getTypeParameters(), arg);
+            if (!isNullOrEmpty(n.getTypeParameters())) {
+                printer.print(" ");
+            }
+
+            int mark = printer.push();
+            n.getType().accept(this, arg);
+            String typeString = printer.getMark(mark);
+            printer.pop();
+            printer.print(" ");
+            printer.print(toSnakeIfNecessary(n.getName()));
+
+            printer.print("(");
+            if (!ModifierSet.isStatic(n.getModifiers())) {
+                printer.print("&self");
+                if (!isNullOrEmpty(n.getParameters()))
+                    printer.print(", ");
+            }
+            if (!isNullOrEmpty(n.getParameters())) {
+                for (final Iterator<Parameter> i = n.getParameters().iterator(); i.hasNext(); ) {
+                    final Parameter p = i.next();
+                    p.accept(this, arg);
+                    if (i.hasNext()) {
+                        printer.print(", ");
+                    }
+                }
+            }
+            printer.print(") ");
+            if (!typeString.equals("void")) {
+                printer.print("-> ");
+
+
+                if (n.getArrayCount() > 0) {
+                    printer.print("/* ");
+                    for (int i = 0; i < n.getArrayCount(); i++) {
+                        printer.print("[]");
+                    }
+                    printer.print(" */");
+                }
+
+                if (!isNullOrEmpty(n.getThrows())) {
+                    replaceThrows(n, arg, typeString);
+                } else {
+                    printer.print(typeString);
+                }
+            } else {
+                if (!isNullOrEmpty(n.getThrows())) {
+                    printer.print(" -> ");
+                    replaceThrows(n, arg, "Void");
+                }
+            }
+            printer.print(" ");
+            if (n.getBody() == null) {
+                printer.print(";");
+            } else {
+                printer.print(" ");
+                n.getBody().accept(this, arg);
             }
         }
-        printModifiers(n.getModifiers());
-        printer.print("fn ");
-        if (n.isDefault()) {
-            printer.print("default ");
+        finally {
+            idTracker.setCurrentMethod(null);
         }
-        printTypeParameters(n.getTypeParameters(), arg);
-        if (!isNullOrEmpty(n.getTypeParameters())) {
-            printer.print(" ");
-        }
+    }
 
-        int mark = printer.push();
-        n.getType().accept(this, arg);
-        String typeString = printer.getMark(mark);
-        printer.pop();
-        printer.print(" ");
-        printer.print(toSnakeIfNecessary(n.getName()));
-
-        printer.print("(");
-        if (!ModifierSet.isStatic(n.getModifiers())) {
-            printer.print("&self");
-            if (!isNullOrEmpty(n.getParameters()))
+    private void replaceThrows(MethodDeclaration n, Object arg, String typeString) {
+        printer.print("/* ");
+        printer.print(" throws ");
+        for (final Iterator<ReferenceType> i = n.getThrows().iterator(); i.hasNext(); ) {
+            final ReferenceType name = i.next();
+            name.accept(this, arg);
+            if(i.hasNext()) {
                 printer.print(", ");
-        }
-        if (!isNullOrEmpty(n.getParameters())) {
-            for (final Iterator<Parameter> i = n.getParameters().iterator(); i.hasNext();) {
-                final Parameter p = i.next();
-                p.accept(this, arg);
-                if (i.hasNext()) {
-                    printer.print(", ");
-                }
             }
         }
-        printer.print(") -> ");
-
-
-        if (n.getArrayCount() > 0) {
-            printer.print("/* ");
-            for (int i = 0; i < n.getArrayCount(); i++) {
-                printer.print("[]");
-            }
-            printer.print(" */");
-        }
-
-        if (!isNullOrEmpty(n.getThrows())) {
-            printer.print("/* ");
-            printer.print(" throws ");
-            for (final Iterator<ReferenceType> i = n.getThrows().iterator(); i.hasNext();) {
-                final ReferenceType name = i.next();
-                name.accept(this, arg);
-                if (i.hasNext()) {
-                    printer.print(", ");
-                }
-            }
-            printer.print(" */");
-            printer.print("Result<");
-            printer.print(typeString);
-            printer.print("> ");
-        } else {
-            printer.print(typeString);
-        }
-        printer.print(" ");
-        if (n.getBody() == null) {
-            printer.print(";");
-        } else {
-            printer.print(" ");
-            n.getBody().accept(this, arg);
-        }
+        printer.print(" */");
+        printer.print("Result<");
+        printer.print(typeString);
+        printer.print(", Rc<Exception>> ");
     }
 
     @Override
@@ -1425,6 +1615,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final LabeledStmt n, final Object arg) {
         printJavaComment(n.getComment(), arg);
+        printer.print("'");
         printer.print(n.getLabel());
         printer.print(": ");
         n.getStmt().accept(this, arg);
@@ -1447,9 +1638,9 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final SwitchStmt n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printer.print("switch(");
+        printer.print("match ");
         n.getSelector().accept(this, arg);
-        printer.printLn(") {");
+        printer.printLn(" {");
         if (n.getEntries() != null) {
             printer.indent();
             for (final SwitchEntryStmt e : n.getEntries()) {
@@ -1465,19 +1656,23 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     public void visit(final SwitchEntryStmt n, final Object arg) {
         printJavaComment(n.getComment(), arg);
         if (n.getLabel() != null) {
-            printer.print("case ");
+            printer.print("  ");
             n.getLabel().accept(this, arg);
-            printer.print(":");
+            printer.print(" => ");
         } else {
-            printer.print("default:");
+            printer.print("_ => ");
         }
         printer.printLn();
         printer.indent();
         if (n.getStmts() != null) {
+            printer.printLn(" {");
+            printer.indent();
             for (final Statement s : n.getStmts()) {
                 s.accept(this, arg);
                 printer.printLn();
             }
+            printer.unindent();
+            printer.printLn("}");
         }
         printer.unindent();
     }
@@ -1487,7 +1682,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printJavaComment(n.getComment(), arg);
         printer.print("break");
         if (n.getId() != null) {
-            printer.print(" ");
+            printer.print(" '");
             printer.print(n.getId());
         }
         printer.print(";");
@@ -1499,7 +1694,13 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printer.print("return");
         if (n.getExpr() != null) {
             printer.print(" ");
+            if (idTracker.hasThrows()) {
+                printer.print("Ok(");
+            }
             n.getExpr().accept(this, arg);
+            if (idTracker.hasThrows()) {
+                printer.print(")");
+            }
         }
         printer.print(";");
     }
@@ -1599,24 +1800,24 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         n.getThenStmt().accept(this, arg);
         if (!thenBlock) {
             printer.unindent();
+            printer.printLn();
             printer.printLn("}");
         }
         if (n.getElseStmt() != null) {
             if (thenBlock)
                 printer.print(" ");
-            else
-                printer.printLn();
             final boolean elseIf = n.getElseStmt() instanceof IfStmt;
             final boolean elseBlock = n.getElseStmt() instanceof BlockStmt;
             if (elseIf || elseBlock) // put chained if and start of block statement on a same level
                 printer.print("else ");
             else {
-                printer.printLn("else {");
+                printer.print("else {");
                 printer.indent();
             }
             n.getElseStmt().accept(this, arg);
             if (!(elseIf || elseBlock)) {
                 printer.unindent();
+                printer.printLn();
                 printer.printLn("}");
             }
         }
@@ -1636,7 +1837,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printJavaComment(n.getComment(), arg);
         printer.print("continue");
         if (n.getId() != null) {
-            printer.print(" ");
+            printer.print(" '");
             printer.print(n.getId());
         }
         printer.print(";");
@@ -1669,7 +1870,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printJavaComment(n.getComment(), arg);
         printer.print("for ");
         n.getVariable().accept(this, arg);
-        printer.print(" : ");
+        printer.print(" in ");
         n.getIterable().accept(this, arg);
         printer.print(" ");
         encapsulateIfNotBlock(n.getBody(), arg);
@@ -1678,32 +1879,41 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final ForStmt n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printer.print("for (");
-        if (n.getInit() != null) {
+        if (n.getInit() != null && !n.getInit().isEmpty()) {
+            printer.printLn(" {");
+            printer.indent();
             for (final Iterator<Expression> i = n.getInit().iterator(); i.hasNext();) {
                 final Expression e = i.next();
                 e.accept(this, arg);
-                if (i.hasNext()) {
-                    printer.print(", ");
-                }
+                printer.printLn(";");
             }
         }
-        printer.print("; ");
         if (n.getCompare() != null) {
+            printer.print("while ");
             n.getCompare().accept(this, arg);
+        } else {
+            printer.print("loop ");
         }
-        printer.print("; ");
-        if (n.getUpdate() != null) {
+        if (n.getUpdate() != null && !n.getUpdate().isEmpty()) {
+            printer.printLn(" {");
+            printer.indent();
+        }
+
+        encapsulateIfNotBlock(n.getBody(), arg);
+        printer.printLn("");
+        if (n.getUpdate() != null && !n.getUpdate().isEmpty()) {
             for (final Iterator<Expression> i = n.getUpdate().iterator(); i.hasNext();) {
                 final Expression e = i.next();
                 e.accept(this, arg);
-                if (i.hasNext()) {
-                    printer.print(", ");
-                }
+                printer.printLn(";");
             }
+            printer.unindent();
+            printer.printLn(" }");
         }
-        printer.print(") ");
-        encapsulateIfNotBlock(n.getBody(), arg);
+        if (n.getInit() != null && !n.getInit().isEmpty()) {
+            printer.unindent();
+            printer.printLn(" }");
+        }
     }
 
     @Override
@@ -1725,37 +1935,51 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
 
     @Override
     public void visit(final TryStmt n, final Object arg) {
-        printJavaComment(n.getComment(), arg);
-        printer.print("try ");
-        if (!n.getResources().isEmpty()) {
-            printer.print("(");
-            Iterator<VariableDeclarationExpr> resources = n.getResources().iterator();
-            boolean first = true;
-            while (resources.hasNext()) {
-                visit(resources.next(), arg);
-                if (resources.hasNext()) {
-                    printer.print(";");
-                    printer.printLn();
-                    if (first) {
-                        printer.indent();
+        int tryCount = ++idTracker.tryCount;
+        try {
+            printJavaComment(n.getComment(), arg);
+            printer.printLn("let tryResult" + tryCount + " = 0;");
+            printer.printLn("'try" + tryCount + ": loop {");
+            if (!n.getResources().isEmpty()) {
+                printer.print("(");
+                Iterator<VariableDeclarationExpr> resources = n.getResources().iterator();
+                boolean first = true;
+                while (resources.hasNext()) {
+                    visit(resources.next(), arg);
+                    if (resources.hasNext()) {
+                        printer.print(";");
+                        printer.printLn();
+                        if (first) {
+                            printer.indent();
+                        }
                     }
+                    first = false;
                 }
-                first = false;
+                if (n.getResources().size() > 1) {
+                    printer.unindent();
+                }
+                printer.print(") ");
             }
-            if (n.getResources().size() > 1) {
+            n.getTryBlock().accept(this, arg);
+            printer.printLn();
+            printer.printLn("break 'try" + tryCount);
+            printer.printLn("}");
+            if (n.getCatchs() != null) {
+                printer.printLn("match tryResult"+ tryCount + " {");
+                printer.indent();
+                for (final CatchClause c : n.getCatchs()) {
+                    c.accept(this, arg);
+                }
+                printer.printLn("  0 => break");
                 printer.unindent();
+                printer.printLn("}");
             }
-            printer.print(") ");
-        }
-        n.getTryBlock().accept(this, arg);
-        if (n.getCatchs() != null) {
-            for (final CatchClause c : n.getCatchs()) {
-                c.accept(this, arg);
+            if (n.getFinallyBlock() != null) {
+                printer.print(" finally ");
+                n.getFinallyBlock().accept(this, arg);
             }
-        }
-        if (n.getFinallyBlock() != null) {
-            printer.print(" finally ");
-            n.getFinallyBlock().accept(this, arg);
+        } finally {
+            idTracker.tryCount --;
         }
     }
 

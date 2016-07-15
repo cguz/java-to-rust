@@ -1,5 +1,6 @@
 package de.aschoerk.javaconv;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -29,6 +30,7 @@ public class DeclarationsTest extends Base {
         assertThat(call("class A { void m() { int i = 2; }; }"), containsString("i: i32 = 2;"));
     }
 
+    @Ignore
     @Test
     public void canConvertArrayDeclaration() {
         int[] a;

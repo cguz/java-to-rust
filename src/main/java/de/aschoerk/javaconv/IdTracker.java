@@ -3,6 +3,8 @@ package de.aschoerk.javaconv;
 import java.util.*;
 import java.util.function.Function;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 import com.github.javaparser.ast.Node;
 
 /**
@@ -10,16 +12,67 @@ import com.github.javaparser.ast.Node;
  */
 public class IdTracker {
 
+    int tryCount;
+
+    public IdentityHashMap<Node, Class> types = new IdentityHashMap<>();
+
+    String packageName = null;
+
+    private Set<String> hasThrows = new HashSet<>();
+
+    String currentMethod = null;
+
+    public boolean hasThrows(String name) {
+        return hasThrows.contains(name);
+    }
+
+    public boolean hasThrows() {
+        return currentMethod != null && hasThrows.contains(currentMethod);
+    }
+
+    public void setCurrentMethod(String name) {
+        this.currentMethod = name;
+    }
+
+
+    public String getPackageName() {
+        return packageName;
+    }
+
+    public void setPackageName(final String packageName) {
+        this.packageName = packageName;
+    }
+
+    List<Import> imports = new ArrayList<>();
+
+    public void addImport(Import i) {
+        imports.add(i);
+    }
+
+    public List<Import> getImports() {
+        return imports;
+    }
+
     List<Block> blocks = new ArrayList<>();
 
     Stack<Block> currentBlocks = new Stack<>();
+
+    boolean inConstructor = false;
+
+    public void setInConstructor(final boolean inConstructor) {
+        this.inConstructor = inConstructor;
+    }
+
+    public boolean isInConstructor() {
+        return inConstructor;
+    }
 
     void addChange(String name, Node n) {
         if (!currentBlocks.empty()) currentBlocks.peek().addChange(name, n);
     }
 
-    void addDeclaration(String name, Node n) {
-        if (!currentBlocks.empty()) currentBlocks.peek().addDeclaration(name, n);
+    void addDeclaration(String name, Pair<TypeDescription,Node> description) {
+        if (!currentBlocks.empty()) currentBlocks.peek().addDeclaration(name, description);
     }
 
     void addUsage(String name, Node n) {
@@ -74,16 +127,16 @@ public class IdTracker {
         throw new RuntimeException("not implemented");
     }
 
-    Optional<Node> findDeclarationNodeFor(String name, Node n) {
+    Optional<Pair<TypeDescription, Node>> findDeclarationNodeFor(String name, Node n) {
         Optional<Block> block = findInnerMostBlock(n);
         do {
             if (block.isPresent()) {
                 final Block b = block.get();
-                Node node = b.declarations.get(name);
-                if (node == null) {
+                Pair<TypeDescription, Node> descr = b.declarations.get(name);
+                if (descr == null) {
                     block = b.parentBlock == null ? Optional.empty() : Optional.of(b.parentBlock);
                 } else {
-                    return Optional.of(node);
+                    return Optional.of(descr);
                 }
             } else {
                 return Optional.empty();
@@ -171,13 +224,60 @@ public class IdTracker {
                 .forEach(u -> u.keySet().stream().forEach(
                         k -> {
                             if (res.containsKey(k)) {
-                                res.get(k).add(u.get(k));
+                                res.get(k).add(u.get(k).getRight());
                             } else  {
-                                res.put(k, new ArrayList<>(Collections.singletonList(u.get(k))));
+                                res.put(k, new ArrayList<>(Collections.singletonList(u.get(k).getRight())));
                             }
                         }
                 ));
         return res;
+    }
+
+    public void setHasThrows(String name) {
+        this.hasThrows.add(name);
+    }
+
+    public void putType(Node n, Class clazz) {
+        Class existing = getType(n);
+        if (existing == null)
+            types.put(n,clazz);
+        else {
+            if (clazz.isPrimitive()) {
+                if (isDiscrete(existing) && isFloat(clazz)) {  // propagate discrete to float
+                    types.put(n,clazz);
+                }
+            }
+        }
+    }
+
+    public boolean isDiscrete(final Node n) {
+        if (n == null)
+            return false;
+        return isDiscrete(getType(n));
+    }
+
+
+    public boolean isFloat(final Node n) {
+        if (n == null)
+            return false;
+        return isFloat(getType(n));
+    }
+
+    public boolean isFloat(final Class clazz) {
+        if (clazz == null)
+            return false;
+        return clazz.equals(Float.TYPE) || clazz.equals(Double.TYPE) ||
+               clazz.equals(Float.class) || clazz.equals(Double.class) || clazz.getTypeName().equals("float") || clazz.getTypeName().equals("double") ;
+    }
+    public boolean isDiscrete(final Class clazz) {
+        if (clazz == null)
+            return false;
+        return clazz.equals(Integer.TYPE) || clazz.equals(Long.TYPE) || clazz.equals(Byte.TYPE) || clazz.equals(Short.TYPE) ||
+       clazz.equals(Integer.class) || clazz.equals(Long.class) || clazz.equals(Byte.class) || clazz.equals(Short.class);
+    }
+
+    public Class getType(Node n) {
+        return types.get(n);
     }
 
 }

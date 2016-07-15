@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.hamcrest.Matchers;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -97,6 +98,7 @@ public class IdTrackerTest {
     }
 
 
+    @Ignore
     @Test
     public void testAssignment() throws ParseException {
         IdTracker res = callIt("class A { void method() { int lv; lv = 10; lv++; lv += 100; } }");
