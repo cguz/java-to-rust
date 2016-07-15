@@ -7,6 +7,22 @@ not look into the great open source code provided for java.
 The author is a beginner in rust, so the generated code will sometimes be kind of "unrusty".
 At the moment this server is used in the porting of the apache math3 maven artefact.
 
+## How to use it.
+
+There are two ways:
+<a href=http://46.182.19.221:8080/java-converter/index.jsp>link</a> leads to a small vm running this war.
+
+or use maven to build a snapshot and deploy the war-file into a J2EE-Container.
+
+The default Web-Side shows two Textfields
+The first can be edited and the java-text can be pasted there. After pressing the button
+the converted code appears in the second Textfield.
+
+The java-code can be a class, a part of a class or a simple statement.
+The code must be (java-)syntactically correct. The result quite certainly will not
+ be (rust-)syntactically correct ;-)
+``
+
 ## functions
 
 The server mainly tries to support in dumb formatting changes which are always the same.
@@ -40,16 +56,3 @@ The server mainly tries to support in dumb formatting changes which are always t
     * javadoc-comments
 
 
-## How to use it.
-
-There are two ways:
-<a href=http://46.182.19.221:8080/java-converter/index.jsp>link</a>
-
-or build and deploy the war-file into a J2EE-Container. The default Web-Side shows two Textfields
-The first can be edited and the java-text can be pasted there. After pressing the button
-the converted code appears in the second Textfield.
-
-The java-code can be a class, a part of a class or a simple statement.
-The code must be (java-)syntactically correct. The result quite certainly will not
- be (rust-)syntactically correct ;-)
-``
