@@ -11,27 +11,33 @@ At the moment this server is used in the porting of the apache math3 maven artef
 
 The server mainly tries to support in dumb formatting changes which are always the same.
 
-* What has been implemented yet and might be of use:
+* What has been implemented and might be of use:
 
-    * conversion of declarations Java: Type name = init to name: Type = init
-    * conversion of arrays type[] to vectors: with dimensions [type; size] = new Type[size],
-   type[][] = new type[size1][size2] to [[type;size2]; size1]
-    * snake-case for camelcase-identifiers starting with lower case
-    * mapping of primitive types
-    * &self as first parameter in non static methods
-    * new type becomes type::new
-    * class becomes struct with its instance-variables
-    * methods will be found in extra block impl struct { }
-    * decide about usage of mut
-    * conversion of integer-constants to float-constants
-    * conversion of Exceptions into Results
+    * conversion of **declarations** Java: _"Type name = init"_ to _"let name: Type = init"_
+    * **conversion of arrays** type[] to vectors
+    * **snake-case** for camelcase-identifiers starting with lower case
+    * mapping of **primitive** types
+    * **&amp;self** as first parameter in non static methods
+    * **new** type becomes type::new
+    * **class becomes struct** with its instance-variables
+    * class-methods can be found in extra block **impl for** <class-name> { }
+    * decide about usage of **mut**
+    * conversion of **integer-constants** to float-constants where necessary
+    * conversion of **Exceptions** into Results
+    * **static methods** are called using ::
+    * **@Test** is converted to #[test]
+    * **interfaces** become traits
+    * Java methods with declared **throws** return Result&lt;_,Rc&lt;Exception&gt;&gt; used
+      rust code can be found in directory rust.
 
-* very experimental possibly wrongly done:
+* experimental
+    * conversion of **throw** to break loop with label
 
-    * interfaces become traits
-    * super-classes become instance-variables
-    * conversion of throw to break loop with label
+* very experimental certainly wrongly done:
+    * **super-classes** become instance-variables
 
+* what does not change
+    * javadoc-comments
 
 
 ## How to use it.
