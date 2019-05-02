@@ -10,7 +10,7 @@ At the moment this server is used in the porting of the apache math3 maven artef
 ## How to use it.
 
 There are two ways:
-<a href=http://46.182.19.221:8080/java-converter/index.jsp>link</a> leads to a small vm running this war.
+<a href=https://jrconverter.appspot.com/index.jsp>link</a> leads to a small vm running this war.
 
 or use maven to build a snapshot and deploy the war-file into a J2EE-Container.
 

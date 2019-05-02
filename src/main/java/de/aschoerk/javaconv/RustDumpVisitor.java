@@ -1393,9 +1393,9 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
 
             if(!isNullOrEmpty(n.getThrows())) {
                 printer.print(" throws ");
-                for (final Iterator<NameExpr> i = n.getThrows().iterator(); i.hasNext(); ) {
-                    final NameExpr name = i.next();
-                    name.accept(this, arg);
+                for (final Iterator<ReferenceType> i = n.getThrows().iterator(); i.hasNext(); ) {
+                    final ReferenceType referenceType = i.next();
+                    referenceType.accept(this, arg);
                     if(i.hasNext()) {
                         printer.print(", ");
                     }
@@ -2067,11 +2067,11 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         }
 
         printer.print("::");
-        if (!n.getTypeParameters().isEmpty()) {
+        if (!n.getTypeArguments().getTypeArguments().isEmpty()) {
             printer.print("<");
-            for (Iterator<TypeParameter> i = n.getTypeParameters().iterator(); i
+            for (Iterator<Type> i = n.getTypeArguments().getTypeArguments().iterator(); i
                     .hasNext();) {
-                TypeParameter p = i.next();
+                Type p = i.next();
                 p.accept(this, arg);
                 if (i.hasNext()) {
                     printer.print(", ");

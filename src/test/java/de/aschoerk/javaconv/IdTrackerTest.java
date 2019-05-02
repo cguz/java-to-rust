@@ -18,6 +18,7 @@ import com.github.javaparser.ast.Node;
 /**
  * Created by aschoerk on 03.05.16.
  */
+@Ignore
 @RunWith(JUnit4.class)
 public class IdTrackerTest {
 

@@ -1,11 +1,10 @@
 <%@ page import="org.apache.commons.lang3.StringUtils" %>
 <%@ page import="de.aschoerk.javaconv.JavaConverter" %>
-<%@ page import="de.aschoerk.doxiaconv.DoxiaConverter" %>
 <html>
 <body>
-<h4>TWiki/Confluence Converter</h4>
-The Conversion tries to get rid of some menial editing work, necessary when converting a twiki pages to confluence.
-Input TWiki-Code.
+<h4>Java/Rust Converter</h4>
+The Conversion tries to get rid of some menial editing work, necessary when converting a java program to rust.
+Input Java Code, Best are complete Class-Files, Single Methods and Statements should work as well.
 <form action="index.jsp" method="POST" >
     <table width="75%">
         <thead>
@@ -13,9 +12,19 @@ Input TWiki-Code.
         <td>The Conversion Result</td>
         </thead>
         <tr>
-            <td width="50%"><textarea rows="50" cols="100" name="textarea" ><%= request.getParameter("textarea") == null ? "" : request.getParameter("textarea") %></textarea></td>
             <td width="50%">
-                <textarea rows="50" cols="100" name="textarea" ><%= new DoxiaConverter().convert(request.getParameter("textarea"),"twiki","confluence") %></textarea>
+                <textarea rows="50" cols="100" name="textarea" >
+                <% if (!StringUtils.isEmpty(request.getParameter("textarea"))) { %>
+                   <%= request.getParameter("textarea") %>
+                <% } %>
+                </textarea>
+            </td>
+            <td width="50%">
+                <textarea rows="50" cols="100" name="textarea" >
+                <% if (!StringUtils.isEmpty(request.getParameter("textarea"))) { %>
+                   <%= JavaConverter.convert2Rust(request.getParameter("textarea")) %>
+                <% } %>
+                </textarea>
             </td>
         </tr>
     </table>
