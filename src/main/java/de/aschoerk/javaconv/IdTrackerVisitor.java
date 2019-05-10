@@ -157,7 +157,10 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
                     resulting = candidates.iterator().next();
                 }
                 else {
-                    List<Method> matching = candidates.stream().filter(m -> m.getParameterCount() == n.getArgs().size()).collect(Collectors.toList());
+                    List<Method> matching = candidates.stream().filter(
+                            m -> m.getParameterCount() == n.getArgs().size()
+                                    || m.isVarArgs() && m.getParameterCount() <= n.getArgs().size()
+                    ).collect(Collectors.toList());
                     if(matching.size() == 1) {
                         resulting = matching.get(0);
                     }

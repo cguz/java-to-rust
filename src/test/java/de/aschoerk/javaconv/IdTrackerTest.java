@@ -79,6 +79,17 @@ public class IdTrackerTest {
         checkUsages(res);
     }
 
+    @Test
+    public void test() throws ParseException {
+        String testString = "String.format(\"IR Seeker: %3.0f%% signal at %6.1f degrees\", "
+                            + "getStrength() * 100.0d, getAngle())";
+        IdTracker res = callIt(testString);
+        assertThat(res.getUsages().values(), Matchers.hasSize(3));
+        assertThat(res.getChanges().values(), Matchers.hasSize(0));
+        assertThat(res.getDeclarations().values(), Matchers.hasSize(3));  // A, iv, method
+        checkUsages(res);
+    }
+
     private void checkUsages(IdTracker res) {
         res.getUsages().entrySet().stream().forEach(e -> {
             e.getValue().forEach(n ->

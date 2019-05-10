@@ -1032,7 +1032,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printer.print("\"");
 
         for (Node node: binChain) {
-            if (!(node instanceof StringLiteralExpr)) {
+            if (!(node instanceof StringLiteralExpr) && node != n) {
                 printer.print(", ");
                 node.accept(this,arg);
             }
