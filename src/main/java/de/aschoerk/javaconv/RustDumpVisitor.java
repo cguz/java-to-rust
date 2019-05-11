@@ -330,11 +330,11 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     public void visit(final CompilationUnit n, final Object arg) {
         printJavaComment(n.getComment(), arg);
 
-        /*
         if (n.getPackage() != null) {
             n.getPackage().accept(this, arg);
         }
 
+        /*
         if (!isNullOrEmpty(n.getImports())) {
             for (final ImportDeclaration i : n.getImports()) {
                 i.accept(this, arg);
@@ -364,7 +364,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final PackageDeclaration n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printer.print("package ");
+        printer.print("// package ");
         n.getName().accept(this, arg);
         printer.printLn(";");
         printer.printLn();
@@ -417,7 +417,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final ClassOrInterfaceDeclaration n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
 
         final boolean staticSearched[] = { true };
         Function<BodyDeclaration, Boolean> selectFieldDeclarationBooleanFunction = mem -> {
@@ -521,7 +520,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final EmptyTypeDeclaration n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
         printer.print(";");
 
         printOrphanCommentsEnding(n);
@@ -664,7 +662,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         printOrphanCommentsBeforeThisChildNode(n);
 
         printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
         if (commentOut) {
             printer.printLn("/* ");
             printModifiers(n.getModifiers());
@@ -1369,7 +1366,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         idTracker.setInConstructor(true);
         try {
             printJavaComment(n.getComment(), arg);
-            printJavadoc(n.getJavaDoc(), arg);
             printModifiers(n.getModifiers());
 
             printTypeParameters(n.getTypeParameters(), arg);
@@ -1416,7 +1412,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
             printOrphanCommentsBeforeThisChildNode(n);
 
             printJavaComment(n.getComment(), arg);
-            printJavadoc(n.getJavaDoc(), arg);
 
             for (AnnotationExpr a : n.getAnnotations()) {
                 if (a.getName().getName().equals("Test")) {
@@ -1708,7 +1703,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final EnumDeclaration n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
         printModifiers(n.getModifiers());
 
         printer.print("enum ");
@@ -1752,7 +1746,6 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final EnumConstantDeclaration n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
         printer.print(n.getName());
 
         if (n.getArgs() != null) {
@@ -1771,14 +1764,12 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
     @Override
     public void visit(final EmptyMemberDeclaration n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
         printer.print(";");
     }
 
     @Override
     public void visit(final InitializerDeclaration n, final Object arg) {
         printJavaComment(n.getComment(), arg);
-        printJavadoc(n.getJavaDoc(), arg);
         if (n.isStatic()) {
             printer.print("static ");
         }
