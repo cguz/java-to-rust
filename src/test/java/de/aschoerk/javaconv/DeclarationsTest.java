@@ -54,5 +54,12 @@ public class DeclarationsTest extends Base {
         assertThat(call("static void staticMethod() { }"), containsString("static_method()"));
     }
 
+    @Test
+    public void enumDeclarationCreatesNewBlock() {
+        assertThat(call("class X {\n" +
+                " enum A { AA; private final int id; }\n" +
+                " enum B { BB; private final int id; }\n" +
+                "}"), containsString("let id: i32"));
+    }
 
 }

@@ -13,6 +13,7 @@ import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
@@ -65,6 +66,14 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
 
     @Override
     public void visit(ClassOrInterfaceDeclaration n, IdTracker arg) {
+        arg.pushBlock(n);
+        arg.addDeclaration(n.getName(), Pair.of(null,n));
+        super.visit(n, arg);
+        arg.popBlock();
+    }
+
+    @Override
+    public void visit(EnumDeclaration n, IdTracker arg) {
         arg.pushBlock(n);
         arg.addDeclaration(n.getName(), Pair.of(null,n));
         super.visit(n, arg);
