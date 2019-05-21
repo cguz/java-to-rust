@@ -13,11 +13,11 @@ import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.body.VariableDeclaratorId;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.expr.*;
@@ -26,8 +26,6 @@ import com.github.javaparser.ast.stmt.CatchClause;
 import com.github.javaparser.ast.stmt.ExpressionStmt;
 import com.github.javaparser.ast.stmt.ForStmt;
 import com.github.javaparser.ast.stmt.ForeachStmt;
-import com.github.javaparser.ast.stmt.ReturnStmt;
-import com.github.javaparser.ast.stmt.SwitchStmt;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.ReferenceType;
@@ -68,6 +66,14 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
 
     @Override
     public void visit(ClassOrInterfaceDeclaration n, IdTracker arg) {
+        arg.pushBlock(n);
+        arg.addDeclaration(n.getName(), Pair.of(null,n));
+        super.visit(n, arg);
+        arg.popBlock();
+    }
+
+    @Override
+    public void visit(EnumDeclaration n, IdTracker arg) {
         arg.pushBlock(n);
         arg.addDeclaration(n.getName(), Pair.of(null,n));
         super.visit(n, arg);
@@ -211,26 +217,6 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
         if (inAssignTarget) {
             arg.addChange(n.getName(), n);
         }
-        super.visit(n, arg);
-    }
-
-    @Override
-    public void visit(ReferenceType n, IdTracker arg) {
-        super.visit(n, arg);
-    }
-
-    @Override
-    public void visit(ReturnStmt n, IdTracker arg) {
-        super.visit(n, arg);
-    }
-
-    @Override
-    public void visit(SwitchStmt n, IdTracker arg) {
-        super.visit(n, arg);
-    }
-
-    @Override
-    public void visit(ThisExpr n, IdTracker arg) {
         super.visit(n, arg);
     }
 
@@ -381,11 +367,6 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
     }
 
     @Override
-    public void visit(LambdaExpr n, IdTracker arg) {
-        super.visit(n, arg);
-    }
-
-    @Override
     public void visit(CatchClause n, IdTracker arg) {
         arg.pushBlock(n);
         try {
@@ -394,23 +375,6 @@ public class IdTrackerVisitor extends VoidVisitorAdapter<IdTracker> {
         finally {
             arg.popBlock();
         }
-    }
-
-    @Override
-    public void visit(ArrayAccessExpr n, IdTracker arg) {
-
-        super.visit(n, arg);
-    }
-
-    @Override
-    public void visit(FieldAccessExpr n, IdTracker arg) {
-        super.visit(n, arg);
-    }
-
-    @Override
-    public void visit(FieldDeclaration n, IdTracker arg) {
-
-        super.visit(n, arg);
     }
 
     @Override
