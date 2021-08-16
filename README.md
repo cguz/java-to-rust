@@ -1,33 +1,18 @@
-# java-converter
+# Java to Rust Converter
 
-This crude web-application can be a small help or not so small help when trying to port Java-Code to Rust.
-The safety features in Rust make it feasible, even if there is no GC in Rust. So if trying to provide libraries for Rust, why
-not look into the great open source code provided for java.
+This is a shell version of the [web-application](https://github.com/aschoerk/converter-page). From now, all the credits for the original author of the web-application.
+
+The application is a small help when trying to port Java-Code to Rust.
 
 The author is a beginner in rust, so the generated code will sometimes be kind of "unrusty".
-At the moment this server is used in the porting of the apache math3 maven artefact.
 
 ## How to use it.
 
-There are two ways:
-<a href=https://jrconverter.appspot.com/index.jsp>link</a> leads to a small vm running this war.
+$ java -jar java-to-rust.jar [path_file.java | path_directory]
 
-or use maven to build a snapshot and deploy the war-file into a J2EE-Container.
-
-The default Web-Side shows two Textfields
-The first can be edited and the java-text can be pasted there. After pressing the button
-the converted code appears in the second Textfield.
-
-The java-code can be a class, a part of a class or a simple statement.
-The code must be (java-)syntactically correct. The result quite certainly will not
- be (rust-)syntactically correct ;-)
 ``
 
-## functions
-
-The server mainly tries to support in dumb formatting changes which are always the same.
-
-* What has been implemented and might be of use:
+## Implemented Functions
 
     * conversion of **declarations** Java: _"Type name = init"_ to _"let name: Type = init"_
     * **conversion of arrays** type[] to vectors
