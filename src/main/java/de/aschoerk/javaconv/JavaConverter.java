@@ -13,6 +13,37 @@ import com.github.javaparser.ast.CompilationUnit;
 
 public class JavaConverter {
 
+	private String convert(File file) throws IOException {
+
+    	String output = "";
+    	String EXTENSION = ".rs";
+    	
+		if (file.exists()) {
+			
+			// get the name of the file
+			Path path = file.toPath();
+			output = path.getFileName().toString();
+			
+			String[] outputSplit = output.split("\\.");
+			
+			output = outputSplit[0]+EXTENSION;
+			
+			// get the text of the file
+			String text = Files.readString(path);
+			
+			String result = convert(text);
+			
+			// store the result in the file
+			Files.writeString(Path.of(output), result);
+			
+			System.out.println("- "+output);
+			
+			return "";
+		}else {
+    		return "\nThe file does not exist!";
+		}
+	}
+	
     public static String convert2Rust(String javaString) {
         return new JavaConverter().convert(javaString);
     }
@@ -37,34 +68,30 @@ public class JavaConverter {
     
     public static void main(String[] args) throws IOException {
     	
+    	String howToUse = "$ java -jar java-to-rust.jar [path_file.java | path_directory]";
+    	
     	String filename = "";
     	
-    	for (int index = 0; index <args.length; index++) {
+    	if (args.length < 1) {
+
+    		System.out.println("Help of use:\n" + howToUse);
     		
-    		if (args[index].equals("-f")) {
-    			index++;
-    			if(index < args.length)
-    				filename = args[index];
-    		}
-    		
-    	}
-    	
-    	if (filename.isEmpty()) {
-    		System.out.println("Please specify the java file as follow:\n\njavac JavaConverter -f path_url_java_file");
     	}else {
-        	if (!filename.contains(".java"))
-        		System.out.println("The file should contain a java extension.");
-        	else {
+    	
+	    	for (int index = 0; index <args.length; index++) {
+
+				filename = args[index];
+	    		
+	    	}
+	    	
+	    	if (filename.isEmpty()) {
+	    		System.out.println("Please specify the java file as follow:\n\n" + howToUse);
+	    	}else {
         		File file = new File(filename);
-        		if (file.exists()) {
-        			String text = Files.readString(Path.of(filename));
-        			
-        			JavaConverter java_converter= new JavaConverter();
-        			System.out.println(java_converter.convert(text));
-        		}else {
-            		System.out.println("The file does not exist!");
-        		}
-        	}	
-    	}     	
+    			JavaConverter java_converter= new JavaConverter();
+    			java_converter.convert(file);
+    			
+	    	} 
+    	}
     }
 }
