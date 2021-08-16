@@ -10,6 +10,8 @@ The author is a beginner in rust, so the generated code will sometimes be kind o
 
 $ java -jar java-2-rust.jar [path_file.java | path_directory]
 
+The converted files will be saved in the folder: "output"
+
 ## Implemented Functions
 
  Same functionalities as the [web-application](https://github.com/aschoerk/converter-page).
