@@ -66,8 +66,8 @@ public class Block {
 
     public void addDeclaration(String name, Pair<TypeDescription,Node> description) {
         if (declarations.get(name) != null) {
-            throw new RuntimeException("expected declarations to be added only once: " + description.getRight() + " at " + description.getRight().getRange()
-                    + ", already in " + declarations.get(name).getRight().getRange());
+            // throw new RuntimeException("expected declarations to be added only once: " + description.getRight() + " at " + description.getRight().getRange()
+            //         + ", already in " + declarations.get(name).getRight().getRange());
         }
         declarations.put(name, description);
     }

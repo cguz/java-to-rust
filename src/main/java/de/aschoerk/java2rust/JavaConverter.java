@@ -64,14 +64,14 @@ public class JavaConverter {
 				
 				// read the content of the file
 				String text = Files.readString(path, StandardCharsets.ISO_8859_1);
+
+				System.out.println("- "+output);
 				
 				// convert the java content to rust
 				String result = convert(text);
 				
 				// store the result in the file
 				Files.writeString(Path.of(output), result);
-				
-				System.out.println("- "+output);
 				
 			}
 
