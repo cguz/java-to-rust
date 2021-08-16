@@ -1,5 +1,14 @@
 # Java 2 Rust 
 
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://gitHub.com/cguz/)
+[![Eclipse](https://img.shields.io/badge/-Eclipse-blueviolet)](https://eclipse.org/) 
+[![Java](https://img.shields.io/badge/Java-ED8B00?&logo=java&logoColor=white)](https://java.org/) 
+
+Author: Cesar Augusto Guzman Alvarez [@cguz](https://github.com/cguz/)
+
+
+## Description
+
 This is a shell version of the [web-application](https://github.com/aschoerk/converter-page). From now, all the credits for the original author of the web-application.
 
 The application is a small help when trying to port Java-Code to Rust.
