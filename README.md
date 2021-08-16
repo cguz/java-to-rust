@@ -1,5 +1,7 @@
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://gitHub.com/cguz/)
-[![Eclipse](https://img.shields.io/badge/-Eclipse%20C%2FC%2B%2B-blueviolet)](https://eclipse.org/) 
+[![Eclipse](https://img.shields.io/amo/v/eclipse?label=eclipse&logo=eclipse)](https://eclipse.org/) 
+[![Java](https://img.shields.io/badge/Java-ED8B00?logo=java&logoColor=white)](https://java.org/) 
+
 
 # Java 2 Rust 
 
