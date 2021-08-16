@@ -10,8 +10,6 @@ The author is a beginner in rust, so the generated code will sometimes be kind o
 
 $ java -jar java-to-rust.jar [path_file.java | path_directory]
 
-``
-
 ## Implemented Functions
 
     * conversion of **declarations** Java: _"Type name = init"_ to _"let name: Type = init"_
