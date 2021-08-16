@@ -1,3 +1,6 @@
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://gitHub.com/cguz/)
+[![Eclipse](https://img.shields.io/badge/-Eclipse%20C%2FC%2B%2B-blueviolet)](https://eclipse.org/) 
+
 # Java 2 Rust 
 
 Author: Cesar Augusto Guzman Alvarez [@cguz](https://github.com/cguz/)
