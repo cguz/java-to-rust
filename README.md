@@ -1,4 +1,4 @@
-# Java to Rust Converter
+# Java 2 Rust 
 
 This is a shell version of the [web-application](https://github.com/aschoerk/converter-page). From now, all the credits for the original author of the web-application.
 
@@ -8,7 +8,9 @@ The author is a beginner in rust, so the generated code will sometimes be kind o
 
 ## How to use it.
 
-$ java -jar java-to-rust.jar [path_file.java | path_directory]
+$ java -jar java-2-rust.jar [path_file.java | path_directory]
+
+The converted files will be saved in the folder: "output"
 
 ## Implemented Functions
 
