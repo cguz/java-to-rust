@@ -9,7 +9,7 @@ Author: Cesar Augusto Guzman Alvarez [@cguz](https://github.com/cguz/)
 
 ## Description
 
-This is a shell version of the [web-application](https://github.com/aschoerk/converter-page). From now, all the credits for the original author of the web-application.
+This is a command line tool based on the version [web-application](https://github.com/aschoerk/converter-page). Thus, all the credits for the original author of the web-application.
 
 The application is a small help when trying to port Java-Code to Rust.
 
