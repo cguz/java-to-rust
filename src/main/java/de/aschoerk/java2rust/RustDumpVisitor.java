@@ -2,6 +2,7 @@ package de.aschoerk.java2rust;
 
 import static com.github.javaparser.PositionUtils.sortByBeginPosition;
 import static com.github.javaparser.ast.internal.Utils.isNullOrEmpty;
+import static de.aschoerk.java2rust.utils.NamingHelper.camelToSnakeCase;
 import static java.util.Collections.reverse;
 
 import java.util.ArrayList;
@@ -172,15 +173,7 @@ public class RustDumpVisitor extends VoidVisitorAdapter<Object> {
         }
         String name = n;
         if (Character.isLowerCase(name.charAt(0))) {
-            StringBuilder sb = new StringBuilder();
-            for (Character c : name.toCharArray()) {
-                if (Character.isUpperCase(c)) {
-                    sb.append("_").append(Character.toLowerCase(c));
-                } else {
-                    sb.append(c);
-                }
-            }
-            return sb.toString();
+            return camelToSnakeCase(name);
         }
         return n;
     }
