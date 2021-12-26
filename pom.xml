@@ -155,10 +155,10 @@
                         <configuration>
                             <target>
                                 <!-- Remove the jar-with-dependencies suffix -->
-                                <move file="${project.build.directory}/${build.finalName}.jar"
-                                      tofile="${project.build.directory}/${build.finalName}-no-deps.jar"/>
-                                <move file="${project.build.directory}/${build.finalName}-jar-with-dependencies.jar"
-                                      tofile="${project.build.directory}/${build.finalName}.jar"/>
+                                <move file="${project.build.directory}/${project.build.finalName}.jar"
+                                      tofile="${project.build.directory}/${project.build.finalName}-no-deps.jar"/>
+                                <move file="${project.build.directory}/${project.build.finalName}-jar-with-dependencies.jar"
+                                      tofile="${project.build.directory}/${project.build.finalName}.jar"/>
                             </target>
                         </configuration>
                         <goals>
