@@ -1,23 +1,27 @@
-# Java 2 Rust 
+# Java 2 Rust
 
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://gitHub.com/cguz/)
-[![Eclipse](https://img.shields.io/badge/-Eclipse-blueviolet)](https://eclipse.org/) 
-[![Java](https://img.shields.io/badge/Java-ED8B00?&logo=java&logoColor=white)](https://java.org/) 
+[![Eclipse](https://img.shields.io/badge/-Eclipse-blueviolet)](https://eclipse.org/)
+[![Java](https://img.shields.io/badge/Java-ED8B00?&logo=java&logoColor=white)](https://java.org/)
 
 Author: Cesar Augusto Guzman Alvarez [@cguz](https://github.com/cguz/)
 
-
 ## Description
 
-This is a command line tool based on the version [web-application](https://github.com/aschoerk/converter-page). Thus, all the credits for the original author of the web-application.
+This is a command line tool based on the version [web-application](https://github.com/aschoerk/converter-page). Thus,
+all the credits for the original author of the web-application.
 
 The application is a small help when trying to port Java-Code to Rust.
 
 The author is a beginner in rust, so the generated code will sometimes be kind of "unrusty".
 
+## How to build it.
+
+Run `mvn package` and find your `java2rust.jar` in the project's `target` folder.
+
 ## How to use it.
 
-$ java -jar java-2-rust.jar [path_file.java | path_directory]
+$ java -jar java2rust.jar [path_file.java | path_directory]
 
 The converted files will be saved in the folder: "output"
 
@@ -25,30 +29,30 @@ The converted files will be saved in the folder: "output"
 
 - might be of use:
 
-  - conversion of declarations Java: "Type name = init" to "let name: Type = init"
-  - conversion of arrays type[] to vectors
-  - snake-case for camelcase-identifiers starting with lower case
-  - mapping of primitive types
-  - &self as first parameter in non static methods
-  - new type becomes type::new
-  - class becomes struct with its instance-variables
-  - class-methods can be found in extra block impl for { }
-  - decide about usage of mut
-  - conversion of integer-constants to float-constants where necessary
-  - conversion of Exceptions into Results
-  - static methods are called using ::
-  - @Test is converted to #[test]
-  - interfaces become traits
-  - Java methods with declared throws return Result<_,Rc<Exception>> used rust code can be found in directory rust.
+    - conversion of declarations Java: "Type name = init" to "let name: Type = init"
+    - conversion of arrays type[] to vectors
+    - snake-case for camelcase-identifiers starting with lower case
+    - mapping of primitive types
+    - &self as first parameter in non static methods
+    - new type becomes type::new
+    - class becomes struct with its instance-variables
+    - class-methods can be found in extra block impl for { }
+    - decide about usage of mut
+    - conversion of integer-constants to float-constants where necessary
+    - conversion of Exceptions into Results
+    - static methods are called using ::
+    - @Test is converted to #[test]
+    - interfaces become traits
+    - Java methods with declared throws return Result<_,Rc<Exception>> used rust code can be found in directory rust.
 
 - experimental
 
-  - conversion of throw to break loop with label
- 
+    - conversion of throw to break loop with label
+
 - very experimental certainly wrongly done:
 
-  - super-classes become instance-variables
+    - super-classes become instance-variables
 
 - what does not change
 
-  - javadoc-comments
+    - javadoc-comments
