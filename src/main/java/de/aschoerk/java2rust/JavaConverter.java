@@ -8,6 +8,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
@@ -106,7 +110,7 @@ public class JavaConverter {
     
     public static void main(String[] args) throws IOException {
     	
-    	String howToUse = "$ java -jar java-to-rust.jar [path_file.java | path_directory]";
+    	String howToUse = "$ java -jar java-to-rust.jar -d [path_file.java | path_directory]";
     	
     	String filename = "";
     	String outputDir = "output";
@@ -116,21 +120,47 @@ public class JavaConverter {
     		System.out.println("Help of use:\n" + howToUse);
     		
     	}else {
-    	
-	    	for (int index = 0; index <args.length; index++) {
 
-				filename = args[index];
+			final Map<String, List<String>> params = new HashMap<>();
+
+			List<String> options = null;
+			for (int index = 0; index <args.length; index++) {
+
+				final String a = args[index];
+
+				if (a.charAt(0) == '-') {
+					if (a.length() < 2) {
+						System.err.println("Error at argument " + a);
+						return;
+					}
+
+					options = new ArrayList<>();
+					params.put(a.substring(1), options);
+
+				} else {
+					if (options != null){
+						options.add(a);
+					} else {
+						System.err.println("Illegal parameter usage");
+					}
+				}
 	    		
 	    	}
-	    	
-	    	if (filename.isEmpty()) {
-	    		System.out.println("Please specify the java file as follow:\n\n" + howToUse);
-	    	}else {
-        		File file = new File(filename);
-    			JavaConverter java_converter= new JavaConverter();
-    			java_converter.convert2Rust(file, outputDir);
-    			
-	    	} 
+
+			if (params.isEmpty() || !params.containsKey("d")){
+				System.err.println("Error at argument ");
+				return;
+			}
+
+			filename = params.get("d").get(0);				
+		
+			if (filename.isEmpty()) {
+				System.out.println("Please specify the java file(s) as follow:\n\n" + howToUse);
+				return;
+			}
+			File file = new File(filename);
+			JavaConverter java_converter= new JavaConverter();
+			java_converter.convert2Rust(file, outputDir);
     	}
     }
 }
