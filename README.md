@@ -48,6 +48,8 @@ The converted files will be saved in the folder: "output"
 - experimental
 
     - conversion of throw to break loop with label
+    - mvn-assembly-plugin
+    - convert camel-cased file names to snake-cased names 
 
 - very experimental certainly wrongly done:
 
