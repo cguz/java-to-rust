@@ -15,9 +15,13 @@ The application is a small help when trying to port Java-Code to Rust.
 
 The author is a beginner in rust, so the generated code will sometimes be kind of "unrusty".
 
+## How to build it.
+
+Run `mvn package` and find your `java2rust.jar` in the project's `target` folder.
+
 ## How to use it.
 
-$ java -jar java-2-rust.jar [path_file.java | path_directory]
+$ java -jar java2rust.jar [path_file.java | path_directory]
 
 The converted files will be saved in the folder: "output"
 
@@ -44,7 +48,9 @@ The converted files will be saved in the folder: "output"
 - experimental
 
     - conversion of throw to break loop with label
+    - mvn-assembly-plugin
     - convert camel-cased file names to snake-cased names 
+
 - very experimental certainly wrongly done:
 
     - super-classes become instance-variables
