@@ -1,6 +1,7 @@
 package de.aschoerk.java2rust;
 
 import static de.aschoerk.java2rust.PartParser.createCompilationUnit;
+import static de.aschoerk.java2rust.utils.NamingHelper.camelToSnakeCase;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,8 +22,9 @@ public class JavaConverter {
 		// create the output directory
 		File fileDir = new File(outputDir);
 		
-		if(!fileDir.exists())
+		if(!fileDir.exists()) {
 			fileDir.mkdirs();
+		}
 		
     	String output = outputDir+System.getProperty("file.separator");
 
@@ -37,9 +39,7 @@ public class JavaConverter {
 				// for each file, we call recursively convert2Rust
 				File[] files = file.listFiles();
 		        for(int index=0; index< files.length; index++) {
-		        	
 		        	convert2Rust(files[index], output);
-		        	
 		        }
 		        
 		        // we finish the execution
@@ -58,9 +58,9 @@ public class JavaConverter {
 			
 			// check the java extension of the file
 			if(outputSplit[1].equals("java")) {
-				
-				// set the file name to create as a rust file
-				output += outputSplit[0]+EXTENSION;
+
+				// convert the Java source file name to a camel-cased rust file
+				output += camelToSnakeCase(outputSplit[0]) + EXTENSION;
 				
 				// read the content of the file
 				String text = Files.readString(path, StandardCharsets.ISO_8859_1);
@@ -72,7 +72,6 @@ public class JavaConverter {
 				
 				// store the result in the file
 				Files.writeString(Path.of(output), result);
-				
 			}
 
 			return "";
