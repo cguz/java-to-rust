@@ -5,6 +5,7 @@
 [![Java](https://img.shields.io/badge/Java-ED8B00?&logo=java&logoColor=white)](https://java.org/)
 
 Author: Cesar Augusto Guzman Alvarez [@cguz](https://github.com/cguz/)
+Co-Author: Jonas Cir [@JonasCir](https://github.com/JonasCir)
 
 ## Description
 
