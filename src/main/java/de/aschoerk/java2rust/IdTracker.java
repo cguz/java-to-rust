@@ -71,7 +71,7 @@ public class IdTracker {
         if (!currentBlocks.empty()) currentBlocks.peek().addChange(name, n);
     }
 
-    void addDeclaration(String name, Pair<TypeDescription,Node> description) {
+    void addDeclaration(String name, Pair<TypeDescription, Node> description) {
         if (!currentBlocks.empty()) currentBlocks.peek().addDeclaration(name, description);
     }
 
@@ -84,7 +84,7 @@ public class IdTracker {
         Block block;
         if (!currentBlocks.isEmpty()) {
             Block parent = currentBlocks.peek();
-            if(!parent.contains(n)) throw new AssertionError();
+            if (!parent.contains(n)) throw new AssertionError();
             block = new Block(parent, n);
         } else {
             block = new Block(n);
@@ -127,7 +127,7 @@ public class IdTracker {
         throw new RuntimeException("not implemented");
     }
 
-    Optional<Pair<TypeDescription, Node>> findDeclarationNodeFor(String name, Node n) {
+    public Optional<Pair<TypeDescription, Node>> findDeclarationNodeFor(String name, Node n) {
         Optional<Block> block = findInnerMostBlock(n);
         do {
             if (block.isPresent()) {
@@ -163,7 +163,7 @@ public class IdTracker {
         return sb.toString();
     }
 
-    private HashMap<String, List<Node>>  getAll(Function<Block, HashMap<String, List<Node>> > f) {
+    private HashMap<String, List<Node>> getAll(Function<Block, HashMap<String, List<Node>>> f) {
         final HashMap<String, List<Node>> res = new HashMap<>();
         blocks.stream()
                 .map(f::apply)
@@ -171,7 +171,7 @@ public class IdTracker {
                         k -> {
                             if (res.containsKey(k)) {
                                 res.get(k).addAll(u.get(k));
-                            } else  {
+                            } else {
                                 res.put(k, u.get(k));
                             }
                         }
@@ -204,8 +204,8 @@ public class IdTracker {
     private boolean isChangedInChildrenOfBlock(String name, Block bP) {
         return bP.children.stream()
                 .filter(child ->
-             !isDeclaredInSingleBlock(name, child)
-               && (isChangedInSingleBlock(name, child) || isChangedInChildrenOfBlock(name, child)))
+                        !isDeclaredInSingleBlock(name, child)
+                                && (isChangedInSingleBlock(name, child) || isChangedInChildrenOfBlock(name, child)))
                 .findAny().isPresent();
     }
 
@@ -225,7 +225,7 @@ public class IdTracker {
                         k -> {
                             if (res.containsKey(k)) {
                                 res.get(k).add(u.get(k).getRight());
-                            } else  {
+                            } else {
                                 res.put(k, new ArrayList<>(Collections.singletonList(u.get(k).getRight())));
                             }
                         }
@@ -240,11 +240,11 @@ public class IdTracker {
     public void putType(Node n, Class clazz) {
         Class existing = getType(n);
         if (existing == null)
-            types.put(n,clazz);
+            types.put(n, clazz);
         else {
             if (clazz.isPrimitive()) {
                 if (isDiscrete(existing) && isFloat(clazz)) {  // propagate discrete to float
-                    types.put(n,clazz);
+                    types.put(n, clazz);
                 }
             }
         }
@@ -267,17 +267,25 @@ public class IdTracker {
         if (clazz == null)
             return false;
         return clazz.equals(Float.TYPE) || clazz.equals(Double.TYPE) ||
-               clazz.equals(Float.class) || clazz.equals(Double.class) || clazz.getTypeName().equals("float") || clazz.getTypeName().equals("double") ;
+                clazz.equals(Float.class) || clazz.equals(Double.class) || clazz.getTypeName().equals("float") || clazz.getTypeName().equals("double");
     }
+
     public boolean isDiscrete(final Class clazz) {
         if (clazz == null)
             return false;
         return clazz.equals(Integer.TYPE) || clazz.equals(Long.TYPE) || clazz.equals(Byte.TYPE) || clazz.equals(Short.TYPE) ||
-       clazz.equals(Integer.class) || clazz.equals(Long.class) || clazz.equals(Byte.class) || clazz.equals(Short.class);
+                clazz.equals(Integer.class) || clazz.equals(Long.class) || clazz.equals(Byte.class) || clazz.equals(Short.class);
     }
 
     public Class getType(Node n) {
         return types.get(n);
     }
 
+    public int incrementAndGetTryCount() {
+        return ++tryCount;
+    }
+
+    public void decrementTryCount() {
+        tryCount--;
+    }
 }
