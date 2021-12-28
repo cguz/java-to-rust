@@ -23,7 +23,7 @@ Run `mvn package` and find your `java2rust.jar` in the project's `target` folder
 
 ## How to use it.
 
-$ java -jar java2rust.jar [path_file.java | path_directory]
+$ java -jar java2rust.jar -d [path_file.java | path_directory]
 
 The converted files will be saved in the folder: "output"
 
