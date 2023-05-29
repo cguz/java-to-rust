@@ -68,7 +68,7 @@ public class JavaConverter {
 				output += camelToSnakeCase(outputSplit[0]) + EXTENSION;
 				
 				// read the content of the file
-				String text = Files.readString(path, StandardCharsets.ISO_8859_1);
+				String text = Files.readString(path);
 
 				System.out.println("- "+output);
 				
