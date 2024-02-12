@@ -28,10 +28,10 @@ $ java -jar java2rust.jar -d [path_file.java | path_directory]
 The converted files will be saved in the folder: "output"
 
 Other options are:
-    - -o: Specify the output directory path (default: output)
-    - -i: Ignore existing files in the output directory (default: false)
-	- -v: Specify the verbosity level (default: 2)
-	- -cp: Copy other non-java files to the output directory (default: false)
+ - -o: Specify the output directory path (default: output)
+ - -i: Ignore existing files in the output directory (default: false)
+ - -v: Specify the verbosity level (default: 2)
+ - -cp: Copy other non-java files to the output directory (default: false)
 
 ## Implemented funcionality
 
