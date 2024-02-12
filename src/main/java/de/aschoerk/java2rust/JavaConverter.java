@@ -16,151 +16,147 @@ import java.util.Map;
 import com.github.javaparser.ParseException;
 import com.github.javaparser.ast.CompilationUnit;
 import de.aschoerk.java2rust.codegen.RustDumpVisitor;
-
+import org.apache.commons.cli.*;
 
 public class JavaConverter {
 
 	String EXTENSION = ".rs";
 
-	private String convert2Rust(File file, String outputDir) throws IOException {
+	private String convert2Rust(File file, String outputDir, boolean ignoreExistingFiles, int verbosityLevel,
+			boolean copyOtherFiles) throws IOException {
 
 		// create the output directory
 		File fileDir = new File(outputDir);
-		
-		if(!fileDir.exists()) {
+
+		if (!fileDir.exists()) {
 			fileDir.mkdirs();
 		}
-		
-    	String output = outputDir+System.getProperty("file.separator");
 
-    	// if the file exist
+		String output = outputDir + System.getProperty("file.separator");
+
+		// if the file exist
 		if (file.exists()) {
 
 			// if it is a directory, we go inside the directory
 			if (file.isDirectory()) {
-				
-				output+= file.getName().toString();
-				
+
+				output += file.getName().toString();
+
 				// for each file, we call recursively convert2Rust
 				File[] files = file.listFiles();
-		        for(int index=0; index< files.length; index++) {
-		        	convert2Rust(files[index], output);
-		        }
-		        
-		        // we finish the execution
-		        return "";
-				
+				for (int index = 0; index < files.length; index++) {
+					convert2Rust(files[index], output, ignoreExistingFiles, verbosityLevel, copyOtherFiles);
+				}
+
+				// we finish the execution
+				return "";
+
 			}
-			
+
 			// if it is not a directory, it is a file
-			
+
 			// get the file as a path
 			Path path = file.toPath();
-			
-			// get the name of the file
-			String outputTemp = path.getFileName().toString();			
-			String[] outputSplit = outputTemp.split("\\.");	
-			
-			// check the java extension of the file
-			if(outputSplit[1].equals("java")) {
 
+			// get the name of the file
+			String outputTemp = path.getFileName().toString();
+			String[] outputSplit = outputTemp.split("\\.");
+
+			// check the java extension of the file
+			if (outputSplit[outputSplit.length - 1].equals("java")) {
 				// convert the Java source file name to a camel-cased rust file
 				output += camelToSnakeCase(outputSplit[0]) + EXTENSION;
-				
-				// read the content of the file
-				String text = Files.readString(path, StandardCharsets.ISO_8859_1);
+				if (!ignoreExistingFiles || !Files.exists(Path.of(output))) {
 
-				System.out.println("- "+output);
-				
-				// convert the java content to rust
-				String result = convert(text);
-				
-				// store the result in the file
-				Files.writeString(Path.of(output), result);
+					// read the content of the file
+					String text = Files.readString(path);
+
+					if (verbosityLevel > 0) {
+						System.out.println("- " + output);
+					}
+
+					// convert the java content to rust
+					String result = convert(text);
+
+					// store the result in the file
+					Files.writeString(Path.of(output), result);
+				} else if (verbosityLevel > 1) {
+					System.out.println("- " + output + " (ignored) because it already exists");
+				}
+			} else if (copyOtherFiles) {
+				// copy the file to the output directory
+				output += outputTemp;
+				if (!ignoreExistingFiles || !Files.exists(Path.of(output))) {
+					Files.copy(path, Path.of(output));
+					if (verbosityLevel > 0) {
+						System.out.println("- " + output);
+					}
+				} else if (verbosityLevel > 1) {
+					System.out.println("- " + output + " (ignored) because it already exists");
+				}
 			}
 
 			return "";
-			
-		}else {
-    		return "\nThe file does not exist!";
+
+		} else {
+			return "\nThe file does not exist!";
 		}
 	}
-	
-    public static String convert2Rust(String javaString) {
-        return new JavaConverter().convert(javaString);
-    }
 
+	public static String convert2Rust(String javaString) {
+		return new JavaConverter().convert(javaString);
+	}
 
-    public String convert(String javaString) {
-        try {
-            CompilationUnit  compilationUnit = createCompilationUnit(javaString);
-            IdTrackerVisitor idTrackerVisitor = new IdTrackerVisitor();
-            IdTracker idTracker = new IdTracker();
-            idTrackerVisitor.visit(compilationUnit, idTracker);
-            TypeTrackerVisitor typeTrackerVisitor = new TypeTrackerVisitor(idTracker);
-            typeTrackerVisitor.visit(compilationUnit, null);
+	public String convert(String javaString) {
+		try {
+			CompilationUnit compilationUnit = createCompilationUnit(javaString);
+			IdTrackerVisitor idTrackerVisitor = new IdTrackerVisitor();
+			IdTracker idTracker = new IdTracker();
+			idTrackerVisitor.visit(compilationUnit, idTracker);
+			TypeTrackerVisitor typeTrackerVisitor = new TypeTrackerVisitor(idTracker);
+			typeTrackerVisitor.visit(compilationUnit, null);
 
-            RustDumpVisitor dumper = new RustDumpVisitor(true, idTracker, typeTrackerVisitor);
-            dumper.visit(compilationUnit, null);
-            return dumper.getSource();
-        } catch (ParseException e) {
-            return e.toString();
-        }
-    } 
-    
-    public static void main(String[] args) throws IOException {
-    	
-    	String howToUse = "$ java -jar java-to-rust.jar -d [path_file.java | path_directory]";
-    	
-    	String filename = "";
-    	String outputDir = "output";
-    	
-    	if (args.length < 1) {
+			RustDumpVisitor dumper = new RustDumpVisitor(true, idTracker, typeTrackerVisitor);
+			dumper.visit(compilationUnit, null);
+			return dumper.getSource();
+		} catch (ParseException e) {
+			return e.toString();
+		}
+	}
 
-    		System.out.println("Help of use:\n" + howToUse);
-    		
-    	}else {
+	public static void main(String[] args) throws IOException {
+		Options options = new Options();
+		options.addOption("d", "input", true, "Specify the input file or directory path");
+		options.addOption("o", "output", true, "Specify the output directory path (default: output)");
+		options.addOption("i", "ignore-existing", false,
+				"Ignore existing files in the output directory (default: false)");
+		options.addOption("v", "verbosity", true, "Specify the verbosity level (default: 2)");
+		options.addOption("cp", "copy-other-files", false,
+				"Copy other non-java files to the output directory (default: false)");
 
-			final Map<String, List<String>> params = new HashMap<>();
+		CommandLineParser parser = new DefaultParser();
+		try {
+			CommandLine cmd = parser.parse(options, args);
 
-			List<String> options = null;
-			for (int index = 0; index <args.length; index++) {
+			if (cmd.hasOption("d")) {
+				String filename = cmd.getOptionValue("d");
+				String outputDir = cmd.getOptionValue("o", "output");
+				boolean ignoreExistingFiles = cmd.hasOption("i");
+				int verbosityLevel = Integer.parseInt(cmd.getOptionValue("v", "2"));
+				boolean copyOtherFiles = cmd.hasOption("cp");
 
-				final String a = args[index];
-
-				if (a.charAt(0) == '-') {
-					if (a.length() < 2) {
-						System.err.println("Error at argument " + a);
-						return;
-					}
-
-					options = new ArrayList<>();
-					params.put(a.substring(1), options);
-
-				} else {
-					if (options != null){
-						options.add(a);
-					} else {
-						System.err.println("Illegal parameter usage");
-					}
-				}
-	    		
-	    	}
-
-			if (params.isEmpty() || !params.containsKey("d")){
-				System.err.println("Error at argument ");
-				return;
+				File file = new File(filename);
+				JavaConverter java_converter = new JavaConverter();
+				java_converter.convert2Rust(file, outputDir, ignoreExistingFiles, verbosityLevel, copyOtherFiles);
+			} else {
+				HelpFormatter formatter = new HelpFormatter();
+				formatter.printHelp("java -jar java-to-rust.jar", options);
 			}
+		} catch (org.apache.commons.cli.ParseException e) {
+			System.out.println(e.getMessage());
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp("java -jar java-to-rust.jar", options);
+		}
+	}
 
-			filename = params.get("d").get(0);				
-		
-			if (filename.isEmpty()) {
-				System.out.println("Please specify the java file(s) as follow:\n\n" + howToUse);
-				return;
-			}
-			File file = new File(filename);
-			JavaConverter java_converter= new JavaConverter();
-			java_converter.convert2Rust(file, outputDir);
-    	}
-    }
 }
